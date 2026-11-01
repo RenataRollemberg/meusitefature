@@ -38,10 +38,10 @@ meusitefature/
 
 ## Pendências da fase 1
 
-- [ ] Colocar o número real do WhatsApp em `js/config.js`
+- [x] WhatsApp: (21) 97666-3134 (`js/config.js`)
 - [x] E-mail de suporte: remasolfaturetiss@gmail.com (`js/config.js`)
 - [x] Domínio registrado: guiaxmltiss.com.br (falta configurar o DNS no Registro.br)
-- [ ] Publicar (GitHub Pages: Settings → Pages → branch `main`)
+- [x] Publicado no GitHub Pages em guiaxmltiss.com.br (falta marcar Enforce HTTPS)
 - [ ] Revisar a política de privacidade
 
 ## Fase 2 — sistema de geração de XML
