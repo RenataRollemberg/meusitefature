@@ -2,19 +2,22 @@
 
 Site institucional da **Remasol Fature**.
 
-- **Página principal (`index.html`):** faturamento de convênios, arquivo XML para envio
+- **Página inicial (`index.html`):** Guias TISS, o gerador de guias e lote XML (é o que abre em `guiaxmltiss.com.br`).
+- **Serviços (`servicos.html`):** faturamento de convênios, arquivo XML para envio
   ao convênio e sistema de baixo custo com banco de dados local. No topo, uma caixa
   clicável leva à página de digitalização.
 - **Digitalização (`digitalizacao.html`):** fichas e prontuários em papel → arquivo digital.
-- **Guias TISS (`gerador-xml.html`):** página de divulgação do gerador de guias e lote XML.
-  O próprio aplicativo fica em `guias-tiss/` (cópia da pasta `web/` do repositório `xml`;
+- **App (`guias-tiss/`):** o próprio aplicativo fica em `guias-tiss/` (cópia da pasta `web/` do repositório `xml`;
   quando o app mudar lá, copie a pasta de novo). Os dados ficam no navegador de quem usa.
 
 ## Estrutura
 
 ```
 meusitefature/
-├── index.html          # página principal
+├── index.html          # página inicial: Guias TISS
+├── servicos.html       # serviços de faturamento (antiga página principal)
+├── guias-tiss/         # o aplicativo Guias TISS
+├── CNAME               # domínio: guiaxmltiss.com.br
 ├── digitalizacao.html  # página de digitalização de fichas
 ├── privacidade.html    # política de privacidade (LGPD) — rascunho, revisar
 ├── css/
