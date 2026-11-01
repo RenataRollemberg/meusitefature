@@ -38,11 +38,11 @@ document.addEventListener("DOMContentLoaded", () => {
     botao.rel = "noopener";
   });
 
-  const linkEmail = document.getElementById("link-email");
-  if (linkEmail) {
-    linkEmail.href = `mailto:${CONFIG.email}`;
-    linkEmail.textContent = CONFIG.email;
-  }
+  // Links de e-mail: o do contato (#link-email) e os marcados com data-email
+  document.querySelectorAll("#link-email, [data-email]").forEach((link) => {
+    link.href = `mailto:${CONFIG.email}`;
+    if (!link.dataset.email) link.textContent = CONFIG.email;
+  });
 
   // Formulário de contato → abre o WhatsApp com a mensagem pronta
   const formContato = document.getElementById("form-contato");
