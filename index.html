@@ -27,6 +27,7 @@
       <nav id="menu" class="menu">
         <a href="#faturamento">Faturamento</a>
         <a href="#xml">XML</a>
+        <a href="gerador-xml.html">Guias TISS</a>
         <a href="#sistema">Sistema</a>
         <a href="digitalizacao.html">Digitalização</a>
         <a href="#contato">Contato</a>
@@ -49,6 +50,16 @@
           <span class="aviso-digital__texto">
             <strong>Ainda tem fichas em papel?</strong>
             Suas fichas podem ser digitalizadas e convertidas em arquivo digital.
+          </span>
+          <span class="aviso-digital__seta" aria-hidden="true">→</span>
+        </a>
+
+        <!-- Caixa clicável que leva à página do gerador de XML (Guias TISS) -->
+        <a href="gerador-xml.html" class="aviso-digital aviso-digital--produto">
+          <img class="aviso-digital__icone" src="guias-tiss/img/icone.svg" alt="" width="34" height="34">
+          <span class="aviso-digital__texto">
+            <strong>Novo: Guias TISS, o gerador de XML no navegador</strong>
+            Emita guias de consulta e SP/SADT e gere o lote XML você mesmo. Teste grátis.
           </span>
           <span class="aviso-digital__seta" aria-hidden="true">→</span>
         </a>
@@ -120,6 +131,10 @@
           <li>Envio mais rápido, pagamento mais rápido</li>
         </ul>
       </div>
+      <div class="container chamada produto-bloco">
+        <p class="secao__sub">Prefere gerar o XML na própria clínica?</p>
+        <a href="gerador-xml.html" class="botao botao--contorno">Conheça o Guias TISS</a>
+      </div>
     </section>
 
     <!-- SISTEMA -->
@@ -186,6 +201,7 @@
           <select id="contato-servico" name="servico">
             <option>Faturamento de convênios</option>
             <option>Arquivo XML para o convênio</option>
+            <option>Gerador de XML (Guias TISS)</option>
             <option>Sistema com banco de dados local</option>
             <option>Digitalização de fichas</option>
             <option>Mais de um serviço</option>
