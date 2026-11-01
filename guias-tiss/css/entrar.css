@@ -75,3 +75,6 @@
 .acesso-bloqueio__caixa p { color: var(--muted); }
 .acesso-bloqueio__caixa .btn { margin-top: 12px; }
 html.acesso-carregando .layout { visibility: hidden; }
+
+.entrar__reenviar { display: block; margin: 6px auto 0; }
+.entrar__reenviar[hidden] { display: none; }
