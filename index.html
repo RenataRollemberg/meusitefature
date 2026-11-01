@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remasol Fature | Digitalização de fichas e faturamento para clínicas</title>
-  <meta name="description" content="Remasol Fature transforma fichas e arquivos físicos de consultórios em dados digitais e cuida do faturamento de convênios, entregando o XML pronto para a secretária importar.">
+  <title>Remasol Fature | Faturamento de convênios e XML para clínicas</title>
+  <meta name="description" content="Remasol Fature cuida do faturamento de convênios, entrega o arquivo XML pronto para envio ao convênio e oferece um sistema de baixo custo com banco de dados local para clínicas e consultórios.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
 
   <header class="topo">
     <div class="container topo__linha">
-      <a href="#inicio" class="marca">
+      <a href="index.html" class="marca">
         <img src="assets/logo.svg" alt="" width="36" height="36">
         <span>Remasol <strong>Fature</strong></span>
       </a>
@@ -25,12 +25,12 @@
       </button>
 
       <nav id="menu" class="menu">
-        <a href="#servicos">Serviços</a>
-        <a href="#como-funciona">Como funciona</a>
-        <a href="#para-quem">Para quem</a>
-        <a href="#sistema">Sistema XML</a>
+        <a href="#faturamento">Faturamento</a>
+        <a href="#xml">XML</a>
+        <a href="#sistema">Sistema</a>
+        <a href="digitalizacao.html">Digitalização</a>
         <a href="#contato">Contato</a>
-        <!-- FASE 2: quando o sistema de XML estiver no ar, remova o atributo "hidden" -->
+        <!-- FASE 2: quando a área do cliente existir, remova o atributo "hidden" -->
         <a href="https://app.remasolfature.com.br" class="menu__cliente" hidden>Área do cliente</a>
         <a href="#contato" class="botao botao--pequeno">Fale comigo</a>
       </nav>
@@ -41,156 +41,121 @@
 
     <!-- INÍCIO -->
     <section id="inicio" class="hero">
-      <div class="container hero__grade">
-        <div class="hero__texto">
-          <p class="selo">Para consultórios e clínicas</p>
-          <h1>Suas fichas de papel viram dados. Seu faturamento sai pronto.</h1>
-          <p class="hero__sub">
-            Transformo o arquivo físico do consultório em um banco de dados digital
-            e cuido do faturamento dos convênios. A secretária só importa o XML.
-          </p>
-          <div class="hero__acoes">
-            <a href="#contato" class="botao">Quero um orçamento</a>
-            <a href="#como-funciona" class="botao botao--contorno">Ver como funciona</a>
-          </div>
-        </div>
-
-        <div class="hero__ilustracao" aria-hidden="true">
-          <div class="cartao cartao--papel">
-            <span class="cartao__titulo">Ficha do paciente</span>
-            <span class="linha"></span><span class="linha linha--curta"></span>
-            <span class="linha"></span><span class="linha linha--media"></span>
-          </div>
-          <div class="seta">→</div>
-          <div class="cartao cartao--digital">
-            <span class="cartao__titulo">lote_faturamento.xml</span>
-            <code>&lt;guia&gt;</code>
-            <code>&nbsp;&nbsp;&lt;paciente/&gt;</code>
-            <code>&nbsp;&nbsp;&lt;procedimento/&gt;</code>
-            <code>&lt;/guia&gt;</code>
-            <span class="cartao__ok">✓ pronto para importar</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SERVIÇOS -->
-    <section id="servicos" class="secao">
       <div class="container">
-        <h2 class="secao__titulo">O que eu faço</h2>
-        <p class="secao__sub">Três serviços que podem ser contratados juntos ou separados.</p>
 
-        <div class="cards">
-          <article class="card">
-            <div class="card__icone">📁</div>
-            <h3>Digitalização do arquivo físico</h3>
-            <p>
-              Fichas, prontuários e cadastros em papel viram um banco de dados digital,
-              organizado e pesquisável. Nada de procurar ficha em gaveta.
-            </p>
-          </article>
+        <!-- Caixa clicável que leva à página de digitalização -->
+        <a href="digitalizacao.html" class="aviso-digital">
+          <span class="aviso-digital__icone" aria-hidden="true">📁</span>
+          <span class="aviso-digital__texto">
+            <strong>Ainda tem fichas em papel?</strong>
+            Suas fichas podem ser digitalizadas e convertidas em arquivo digital.
+          </span>
+          <span class="aviso-digital__seta" aria-hidden="true">→</span>
+        </a>
 
-          <article class="card">
-            <div class="card__icone">🧾</div>
-            <h3>Faturamento de convênios</h3>
-            <p>
-              Confiro os atendimentos, monto as guias e organizo os lotes de cada convênio,
-              reduzindo erros e glosas.
+        <div class="hero__grade">
+          <div class="hero__texto">
+            <p class="selo">Para consultórios e clínicas</p>
+            <h1>Faturamento de convênios sem dor de cabeça.</h1>
+            <p class="hero__sub">
+              Cuido do faturamento da sua clínica, entrego o XML pronto para envio
+              ao convênio e ofereço um sistema simples e de baixo custo, que roda no
+              seu próprio computador.
             </p>
-          </article>
+            <div class="hero__acoes">
+              <a href="#contato" class="botao">Quero um orçamento</a>
+              <a href="#faturamento" class="botao botao--contorno">Conhecer os serviços</a>
+            </div>
+          </div>
 
-          <article class="card">
-            <div class="card__icone">⚡</div>
-            <h3>XML pronto para a secretária</h3>
-            <p>
-              Entrego o arquivo XML no padrão dos convênios. A secretária só importa
-              no portal, sem digitar guia por guia.
-            </p>
-          </article>
+          <div class="hero__ilustracao" aria-hidden="true">
+            <div class="cartao cartao--digital">
+              <span class="cartao__titulo">lote_convenio.xml</span>
+              <code>&lt;loteGuias&gt;</code>
+              <code>&nbsp;&nbsp;&lt;guia/&gt;</code>
+              <code>&nbsp;&nbsp;&lt;guia/&gt;</code>
+              <code>&lt;/loteGuias&gt;</code>
+              <span class="cartao__ok">✓ pronto para enviar ao convênio</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- COMO FUNCIONA -->
-    <section id="como-funciona" class="secao secao--clara">
-      <div class="container">
-        <h2 class="secao__titulo">Como funciona</h2>
-
-        <ol class="passos">
-          <li class="passo">
-            <span class="passo__numero">1</span>
-            <h3>Conversa inicial</h3>
-            <p>Entendo como o consultório trabalha hoje: quantas fichas, quais convênios, como é o fechamento.</p>
-          </li>
-          <li class="passo">
-            <span class="passo__numero">2</span>
-            <h3>Digitalização</h3>
-            <p>O arquivo físico é transformado em dados digitais, com sigilo e cuidado com a LGPD.</p>
-          </li>
-          <li class="passo">
-            <span class="passo__numero">3</span>
-            <h3>Faturamento</h3>
-            <p>Os atendimentos são conferidos e organizados em lotes por convênio.</p>
-          </li>
-          <li class="passo">
-            <span class="passo__numero">4</span>
-            <h3>Entrega do XML</h3>
-            <p>A secretária recebe o XML pronto e importa no portal do convênio.</p>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-    <!-- PARA QUEM -->
-    <section id="para-quem" class="secao">
-      <div class="container para-quem">
-        <div>
-          <h2 class="secao__titulo">Para quem é</h2>
-          <p class="secao__sub secao__sub--esquerda">
-            Para médicos e clínicas que ainda guardam tudo em papel ou perdem tempo
-            com faturamento manual.
+    <!-- FATURAMENTO -->
+    <section id="faturamento" class="secao">
+      <div class="container bloco">
+        <div class="bloco__texto">
+          <p class="selo">Serviço</p>
+          <h2>Faturamento de convênios</h2>
+          <p>
+            Confiro os atendimentos, monto as guias e organizo os lotes de cada
+            convênio. Menos erro, menos glosa e mais tempo livre para a sua equipe.
           </p>
         </div>
         <ul class="lista-check">
-          <li>Consultórios com arquivo físico de fichas e prontuários</li>
-          <li>Clínicas que atendem convênios e sofrem com glosas</li>
-          <li>Secretárias sobrecarregadas digitando guia por guia</li>
-          <li>Médicos que querem migrar para o digital sem parar o atendimento</li>
+          <li>Conferência dos atendimentos antes do envio</li>
+          <li>Guias organizadas por convênio</li>
+          <li>Acompanhamento e recurso de glosas</li>
+          <li>Relatório do que foi faturado no mês</li>
         </ul>
       </div>
     </section>
 
-    <!-- SOBRE -->
-    <section id="sobre" class="secao secao--clara">
-      <div class="container sobre">
-        <h2 class="secao__titulo">Sobre a Remasol Fature</h2>
-        <p>
-          A Remasol Fature nasceu da experiência prática com faturamento de clínicas.
-          Conheço de perto a rotina da recepção, o fechamento dos lotes e as dores
-          de quem ainda trabalha com papel. Por isso o foco é simples: tirar o trabalho
-          repetitivo das mãos da equipe e entregar tudo pronto.
-        </p>
+    <!-- XML -->
+    <section id="xml" class="secao secao--clara">
+      <div class="container bloco bloco--invertido">
+        <div class="bloco__texto">
+          <p class="selo">Serviço</p>
+          <h2>Arquivo XML pronto para o convênio</h2>
+          <p>
+            Entrego o arquivo digital XML no padrão exigido pelos convênios.
+            A secretária só importa no portal, sem digitar guia por guia.
+          </p>
+        </div>
+        <ul class="lista-check">
+          <li>Arquivo no padrão do convênio</li>
+          <li>Importação direta no portal</li>
+          <li>Fim da digitação manual das guias</li>
+          <li>Envio mais rápido, pagamento mais rápido</li>
+        </ul>
       </div>
     </section>
 
-    <!-- SISTEMA XML (FASE 2) -->
+    <!-- SISTEMA -->
     <section id="sistema" class="secao secao--destaque">
-      <div class="container sistema">
-        <div>
-          <p class="selo selo--claro">Em breve</p>
-          <h2>Sistema Remasol Fature</h2>
+      <div class="container bloco">
+        <div class="bloco__texto">
+          <p class="selo selo--claro">Sistema</p>
+          <h2>Sistema de baixo custo com banco de dados local</h2>
           <p>
-            Estou preparando um sistema para a própria clínica gerar o XML de faturamento
-            de forma automática. Deixe seu contato para ser avisado no lançamento.
+            Um programa simples para a clínica, que guarda os dados no próprio
+            computador. Sem mensalidade cara e sem depender da internet para funcionar.
           </p>
+          <a href="#contato" class="botao botao--claro">Quero conhecer o sistema</a>
         </div>
-        <form class="form-interesse" id="form-interesse">
-          <label for="interesse-nome">Seu nome</label>
-          <input id="interesse-nome" name="nome" type="text" required autocomplete="name">
-          <label for="interesse-clinica">Clínica ou consultório</label>
-          <input id="interesse-clinica" name="clinica" type="text" required>
-          <button type="submit" class="botao botao--claro">Quero ser avisado</button>
-        </form>
+        <div class="cards cards--dois">
+          <article class="card card--escuro">
+            <div class="card__icone">💰</div>
+            <h3>Baixo custo</h3>
+            <p>Pensado para consultórios pequenos e médios, que precisam do essencial.</p>
+          </article>
+          <article class="card card--escuro">
+            <div class="card__icone">💻</div>
+            <h3>Dados no seu computador</h3>
+            <p>Banco de dados local: as informações ficam com a clínica.</p>
+          </article>
+          <article class="card card--escuro">
+            <div class="card__icone">📶</div>
+            <h3>Funciona sem internet</h3>
+            <p>Caiu a internet? O atendimento continua normalmente.</p>
+          </article>
+          <article class="card card--escuro">
+            <div class="card__icone">🧾</div>
+            <h3>Gera o XML</h3>
+            <p>A própria clínica gera o arquivo para enviar ao convênio.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -219,10 +184,11 @@
 
           <label for="contato-servico">Tenho interesse em</label>
           <select id="contato-servico" name="servico">
-            <option>Digitalização do arquivo físico</option>
             <option>Faturamento de convênios</option>
-            <option>XML para importação</option>
-            <option>Tudo junto</option>
+            <option>Arquivo XML para o convênio</option>
+            <option>Sistema com banco de dados local</option>
+            <option>Digitalização de fichas</option>
+            <option>Mais de um serviço</option>
           </select>
 
           <label for="contato-mensagem">Mensagem</label>

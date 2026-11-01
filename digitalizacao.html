@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digitalização de fichas | Remasol Fature</title>
+  <meta name="description" content="Transformamos fichas e prontuários em papel em arquivo digital organizado e pesquisável, com cuidado com a LGPD.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topo">
+    <div class="container topo__linha">
+      <a href="index.html" class="marca">
+        <img src="assets/logo.svg" alt="" width="36" height="36">
+        <span>Remasol <strong>Fature</strong></span>
+      </a>
+
+      <button class="menu-botao" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav id="menu" class="menu">
+        <a href="index.html">Início</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#para-quem">Para quem</a>
+        <a href="index.html#contato" class="botao botao--pequeno">Fale comigo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="hero">
+      <div class="container hero__grade">
+        <div class="hero__texto">
+          <a href="index.html" class="voltar">← Voltar para o início</a>
+          <p class="selo">Digitalização de fichas</p>
+          <h1>Suas fichas de papel viram arquivo digital.</h1>
+          <p class="hero__sub">
+            Transformo o arquivo físico do consultório (fichas, prontuários e cadastros)
+            em um banco de dados digital, organizado e fácil de pesquisar.
+          </p>
+          <div class="hero__acoes">
+            <a href="index.html#contato" class="botao">Quero digitalizar</a>
+            <a href="#como-funciona" class="botao botao--contorno">Ver como funciona</a>
+          </div>
+        </div>
+
+        <div class="hero__ilustracao" aria-hidden="true">
+          <div class="cartao cartao--papel">
+            <span class="cartao__titulo">Ficha do paciente</span>
+            <span class="linha"></span><span class="linha linha--curta"></span>
+            <span class="linha"></span><span class="linha linha--media"></span>
+          </div>
+          <div class="seta">→</div>
+          <div class="cartao cartao--digital">
+            <span class="cartao__titulo">pacientes.db</span>
+            <code>Nome ........ ✓</code>
+            <code>Convênio .... ✓</code>
+            <code>Histórico ... ✓</code>
+            <span class="cartao__ok">✓ arquivo digital</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao">
+      <div class="container">
+        <h2 class="secao__titulo">O que você ganha</h2>
+        <div class="cards">
+          <article class="card">
+            <div class="card__icone">🔎</div>
+            <h3>Encontra tudo rápido</h3>
+            <p>Nada de procurar ficha em gaveta: busca pelo nome e pronto.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">🗄️</div>
+            <h3>Libera espaço</h3>
+            <p>Menos papel ocupando armário e sala dentro do consultório.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">🔗</div>
+            <h3>Pronto para o faturamento</h3>
+            <p>Com os dados digitais, fica fácil gerar o XML para os convênios.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-funciona" class="secao secao--clara">
+      <div class="container">
+        <h2 class="secao__titulo">Como funciona</h2>
+        <ol class="passos">
+          <li class="passo">
+            <span class="passo__numero">1</span>
+            <h3>Conversa inicial</h3>
+            <p>Entendo quantas fichas existem e como o consultório organiza hoje.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">2</span>
+            <h3>Digitalização</h3>
+            <p>As fichas são escaneadas com sigilo e cuidado com a LGPD.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">3</span>
+            <h3>Organização</h3>
+            <p>As informações viram um banco de dados organizado e pesquisável.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">4</span>
+            <h3>Entrega</h3>
+            <p>O consultório recebe tudo em formato digital, pronto para usar.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="para-quem" class="secao">
+      <div class="container bloco">
+        <div class="bloco__texto">
+          <h2>Para quem é</h2>
+          <p>Para médicos e clínicas que ainda guardam tudo em papel.</p>
+        </div>
+        <ul class="lista-check">
+          <li>Consultórios com arquivo físico de fichas e prontuários</li>
+          <li>Médicos que querem migrar para o digital sem parar o atendimento</li>
+          <li>Clínicas sem espaço para guardar tanto papel</li>
+          <li>Quem quer usar o sistema com banco de dados local</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="secao secao--destaque">
+      <div class="container chamada">
+        <h2>Vamos tirar as suas fichas da gaveta?</h2>
+        <a href="index.html#contato" class="botao botao--claro">Pedir orçamento</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="rodape">
+    <div class="container rodape__linha">
+      <span>© <span id="ano"></span> Remasol Fature</span>
+      <a href="privacidade.html">Política de privacidade</a>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,14 +1,18 @@
 # Remasol Fature — site
 
-Site institucional da **Remasol Fature**: digitalização do arquivo físico de consultórios
-(fichas e prontuários em papel → banco de dados digital) e faturamento de convênios com
-XML pronto para a secretária importar.
+Site institucional da **Remasol Fature**.
+
+- **Página principal (`index.html`):** faturamento de convênios, arquivo XML para envio
+  ao convênio e sistema de baixo custo com banco de dados local. No topo, uma caixa
+  clicável leva à página de digitalização.
+- **Digitalização (`digitalizacao.html`):** fichas e prontuários em papel → arquivo digital.
 
 ## Estrutura
 
 ```
 meusitefature/
 ├── index.html          # página principal
+├── digitalizacao.html  # página de digitalização de fichas
 ├── privacidade.html    # política de privacidade (LGPD) — rascunho, revisar
 ├── css/
 │   └── style.css       # todo o visual (cores nas variáveis do topo)
@@ -36,6 +40,4 @@ O site já está preparado:
   separado do site, configurado em `CONFIG.urlSistema`.
 - **Menu:** o link "Área do cliente" já existe no `index.html` com `hidden`.
   Para mostrar, é só remover esse atributo.
-- **Lista de interessados:** a seção "Em breve" hoje manda o contato pelo WhatsApp.
-  Na fase 2, trocar por gravação em banco (ex.: Firebase) — ver comentário em `js/main.js`.
 - **Login:** e-mail e senha, provavelmente via Firebase Authentication.

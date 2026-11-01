@@ -162,9 +162,7 @@ h3 { font-family: var(--fonte-texto); font-weight: 600; font-size: 1.1rem; }
 .passo h3 { margin-bottom: 8px; }
 .passo p { color: var(--texto-suave); font-size: .95rem; }
 
-/* Para quem */
-.para-quem { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
-.para-quem .secao__titulo { text-align: left; }
+/* Lista com check */
 .lista-check { list-style: none; display: grid; gap: 14px; }
 .lista-check li {
   background: var(--verde-claro);
@@ -179,23 +177,45 @@ h3 { font-family: var(--fonte-texto); font-weight: 600; font-size: 1.1rem; }
   color: var(--verde); font-weight: 700;
 }
 
-/* Sobre */
-.sobre { max-width: 760px; text-align: center; }
-.sobre p { margin-top: 20px; color: var(--texto-suave); font-size: 1.08rem; }
-
-/* Sistema (fase 2) */
-.secao--destaque { background: var(--azul); color: var(--branco); }
-.secao--destaque h2 { color: var(--branco); font-size: clamp(1.7rem, 3.2vw, 2.4rem); margin: 14px 0; }
-.sistema { display: grid; grid-template-columns: 1.2fr 1fr; gap: 50px; align-items: center; }
-.sistema p { opacity: .9; }
-.form-interesse {
-  background: rgba(255,255,255,.08);
-  padding: 28px; border-radius: var(--raio);
-  display: flex; flex-direction: column; gap: 8px;
+/* Caixa clicável "suas fichas podem ser digitalizadas" */
+.aviso-digital {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--branco);
+  border: 2px solid var(--verde);
+  border-radius: var(--raio);
+  padding: 16px 22px;
+  margin-bottom: 50px;
+  text-decoration: none;
+  box-shadow: var(--sombra);
+  transition: transform .15s, background .15s;
 }
-.form-interesse label { font-size: .9rem; opacity: .9; }
-.form-interesse input { margin-bottom: 8px; }
-.form-interesse .botao { margin-top: 6px; }
+.aviso-digital:hover { transform: translateY(-2px); background: var(--verde-claro); }
+.aviso-digital__icone { font-size: 1.8rem; }
+.aviso-digital__texto { flex: 1; color: var(--texto-suave); }
+.aviso-digital__texto strong { display: block; color: var(--azul-escuro); font-size: 1.05rem; }
+.aviso-digital__seta { font-size: 1.5rem; color: var(--verde); font-weight: 700; }
+
+/* Blocos de serviço (texto + lista lado a lado) */
+.bloco { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+.bloco--invertido .bloco__texto { order: 2; }
+.bloco__texto h2 { font-size: clamp(1.7rem, 3.2vw, 2.4rem); margin: 14px 0; }
+.bloco__texto p { color: var(--texto-suave); font-size: 1.08rem; }
+.bloco__texto .botao { margin-top: 26px; }
+
+/* Seção escura (sistema) */
+.secao--destaque { background: var(--azul); color: var(--branco); }
+.secao--destaque h2 { color: var(--branco); }
+.secao--destaque .bloco__texto p { color: rgba(255,255,255,.88); }
+.cards--dois { grid-template-columns: 1fr 1fr; margin-top: 0; gap: 16px; }
+.card--escuro { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); padding: 22px; }
+.card--escuro h3 { color: var(--branco); }
+.card--escuro p { color: rgba(255,255,255,.8); }
+
+/* Página de digitalização */
+.voltar { display: inline-block; margin-bottom: 18px; color: var(--texto-suave); text-decoration: none; font-size: .95rem; }
+.voltar:hover { color: var(--verde); }
+.chamada { text-align: center; }
+.chamada h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); margin-bottom: 26px; }
 
 /* Contato */
 .contato { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: start; }
@@ -237,7 +257,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 900px) {
-  .hero__grade, .para-quem, .sistema, .contato { grid-template-columns: 1fr; }
+  .hero__grade, .bloco, .contato { grid-template-columns: 1fr; }
+  .bloco--invertido .bloco__texto { order: 0; }
   .cards { grid-template-columns: 1fr; }
   .passos { grid-template-columns: 1fr 1fr; }
   .hero__ilustracao { margin-top: 10px; }
@@ -255,6 +276,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
   }
   .menu.aberto { display: flex; }
   .passos { grid-template-columns: 1fr; }
+  .cards--dois { grid-template-columns: 1fr; }
+  .aviso-digital { padding: 14px 16px; gap: 12px; }
   .cartao { width: 150px; padding: 14px; }
   .seta { font-size: 1.4rem; }
   .secao { padding: 64px 0; }

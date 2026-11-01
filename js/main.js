@@ -56,19 +56,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Formulário "Em breve" do sistema XML
-  // FASE 2: trocar por envio a um banco (ex.: Firebase) para guardar a lista
-  const formInteresse = document.getElementById("form-interesse");
-  if (formInteresse) {
-    formInteresse.addEventListener("submit", (evento) => {
-      evento.preventDefault();
-      const dados = new FormData(formInteresse);
-      const texto =
-        `Olá! Quero ser avisado do lançamento do sistema Remasol Fature.\n` +
-        `Nome: ${dados.get("nome")}\nClínica: ${dados.get("clinica")}`;
-      window.open(montarLinkWhatsApp(texto), "_blank", "noopener");
-    });
-  }
 });
 
 function montarLinkWhatsApp(mensagem) {
