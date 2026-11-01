@@ -8,8 +8,8 @@ const CONFIG = {
   // TODO: trocar pelo número real
   whatsapp: "5521900000000",
 
-  // TODO: trocar pelo e-mail real
-  email: "contato@remasolfature.com.br",
+  // E-mail de suporte e contato
+  email: "remasolfaturetiss@gmail.com",
 
   // FASE 2: endereço do sistema de geração de XML
   urlSistema: "https://app.remasolfature.com.br",

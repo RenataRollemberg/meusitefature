@@ -33,8 +33,8 @@ meusitefature/
 ## Pendências da fase 1
 
 - [ ] Colocar o número real do WhatsApp em `js/config.js`
-- [ ] Colocar o e-mail real em `js/config.js`
-- [ ] Comprar o domínio no Registro.br (ex.: `remasolfature.com.br`)
+- [x] E-mail de suporte: remasolfaturetiss@gmail.com (`js/config.js`)
+- [x] Domínio registrado: guiaxmltiss.com.br (falta configurar o DNS no Registro.br)
 - [ ] Publicar (GitHub Pages: Settings → Pages → branch `main`)
 - [ ] Revisar a política de privacidade
 
