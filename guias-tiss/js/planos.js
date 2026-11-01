@@ -4,11 +4,13 @@
 'use strict'
 
 const Planos = (function () {
+  // link: endereço do plano de assinatura criado no Mercado Pago (ex.: https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=...).
+  // Vazio = o botão leva para o WhatsApp da Remasol.
   const lista = [
-    { id: 'basico', nome: 'Básico', medicos: 1, convenios: 1, mensal: 70 },
-    { id: 'basico2', nome: 'Básico 2', medicos: 1, convenios: 3, mensal: 130 },
-    { id: 'clinica', nome: 'Clínica', medicos: 5, convenios: 10, mensal: 280 },
-    { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510 }
+    { id: 'basico', nome: 'Básico', medicos: 1, convenios: 1, mensal: 70, link: '' },
+    { id: 'basico2', nome: 'Básico 2', medicos: 1, convenios: 3, mensal: 130, link: '' },
+    { id: 'clinica', nome: 'Clínica', medicos: 5, convenios: 10, mensal: 280, link: '' },
+    { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510, link: '' }
   ]
 
   const DIAS_GRATIS = 7
@@ -65,8 +67,17 @@ const Planos = (function () {
     return { plano: plano, linhas: linhas, total: Math.round(total * 100) / 100 }
   }
 
+  // Link de pagamento do cliente: o que a Remasol cadastrou para ele no painel (valor combinado,
+  // ex.: Faturista) ou, se não houver, o link do plano dele.
+  function linkPagamento(cliente) {
+    if (cliente && cliente.linkPagamento) return cliente.linkPagamento
+    const plano = get(cliente && cliente.plano)
+    return plano && plano.link ? plano.link : ''
+  }
+
   return {
     lista: lista,
+    linkPagamento: linkPagamento,
     DIAS_GRATIS: DIAS_GRATIS,
     FATURISTA: FATURISTA,
     STATUS: STATUS,

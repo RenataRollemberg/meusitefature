@@ -211,6 +211,9 @@
       '<label class="check"><input type="radio" name="fat-modo" value="inclui"' + (fat.incluiPlataforma !== false ? ' checked' : '') + '>O valor já inclui a plataforma (cobra só o Faturista)</label>' +
       '<label class="check"><input type="radio" name="fat-modo" value="soma"' + (fat.incluiPlataforma === false ? ' checked' : '') + '>Somar ao valor do plano</label></div>' +
       '</div>' +
+      '<div class="form-section">Pagamento</div><div class="grid">' +
+      '<label class="field c12">Link de assinatura do Mercado Pago (opcional)<input id="link" type="url" placeholder="https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=…" value="' + esc(c.linkPagamento) + '">' +
+      '<span class="hint">Use para valores combinados (ex.: Faturista). Vazio = o cliente usa o link do plano.</span></label></div>' +
       '<div class="form-section">Observação (só você vê)</div>' +
       '<label class="field"><textarea id="obs" rows="2" maxlength="500">' + esc(c.observacao) + '</textarea></label>' +
       '<div class="admin-previa" id="previa"></div>' +
@@ -226,6 +229,7 @@
         status: $('#status').value,
         testeAte: $('#testeAte').value,
         observacao: $('#obs').value.trim(),
+        linkPagamento: $('#link').value.trim(),
         faturista: {
           ativo: $('#fat-ativo').checked,
           valor: parseDinheiro(valorTexto),
@@ -261,6 +265,7 @@
       if (novo && clientes.some(function (x) { return x.id === email })) return (msg.innerHTML = erroHtml({ message: 'Este e-mail já está cadastrado. Use "Editar" na lista.' }))
       if (d.faturista.ativo && (Number.isNaN(d.faturista.valor) || d.faturista.valor <= 0)) return (msg.innerHTML = erroHtml({ message: 'Informe o valor combinado do Faturista.' }))
       if (d.faturista.ativo && !d.faturista.incluiPlataforma && !d.plano) return (msg.innerHTML = erroHtml({ message: 'Para somar o Faturista ao plano, escolha um plano.' }))
+      if (d.linkPagamento && !/^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com\.br|mpago\.la|mpago\.li)\//i.test(d.linkPagamento)) return (msg.innerHTML = erroHtml({ message: 'O link de pagamento precisa ser do Mercado Pago (mercadopago.com.br ou mpago.la).' }))
       if (!d.plano && !d.faturista.ativo) return (msg.innerHTML = erroHtml({ message: 'Escolha um plano ou marque o serviço Faturista.' }))
 
       const dados = {
@@ -270,6 +275,7 @@
         status: d.status,
         testeAte: d.status === 'teste' && d.testeAte ? firebase.firestore.Timestamp.fromDate(new Date(d.testeAte + 'T23:59:59')) : null,
         observacao: d.observacao,
+        linkPagamento: d.linkPagamento,
         faturista: d.faturista.ativo
           ? { ativo: true, valor: Math.round(d.faturista.valor * 100) / 100, incluiPlataforma: d.faturista.incluiPlataforma }
           : { ativo: false },

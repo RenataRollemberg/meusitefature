@@ -80,7 +80,7 @@
   function planosHtml() {
     return '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
       return '<a class="assinatura-plano" target="_blank" rel="noopener" href="' +
-        esc(linkWhats('Olá! Quero assinar o Guias TISS no plano ' + p.nome + '.')) + '">' +
+        esc(p.link || linkWhats('Olá! Quero assinar o Guias TISS no plano ' + p.nome + '.')) + '">' +
         '<strong>' + esc(p.nome) + '</strong><span>' + Planos.money(p.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(p)) + '</small></a>'
     }).join('') + '</div>'
   }
@@ -123,7 +123,11 @@
     const ver = faixa.querySelector('[data-ver]')
     if (ver) {
       ver.addEventListener('click', function () {
+        const pagar = Planos.linkPagamento(cliente)
         janela('<h2>Minha assinatura</h2>' + resumoHtml(cliente) +
+          (pagar && cliente.status !== 'ativo'
+            ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(pagar) + '">Pagar com Mercado Pago</a>'
+            : '') +
           '<p>Para trocar de plano, fale com a Remasol: <a href="' + esc(linkWhats('Olá! Quero trocar o plano do Guias TISS.')) + '" target="_blank" rel="noopener">WhatsApp (21) 97666-3134</a>.</p>' +
           '<button type="button" class="btn" data-fechar>Fechar</button>')
       })
@@ -144,7 +148,9 @@
         : 'Para continuar emitindo guias e gerando lotes XML, escolha um plano. Seus dados continuam guardados.') + '</p>' +
       (suspenso
         ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(linkWhats('Olá! Quero reativar o meu Guias TISS.')) + '">Falar com a Remasol</a>'
-        : planosHtml()) +
+        : (Planos.linkPagamento(cliente) && cliente && cliente.linkPagamento
+          ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(cliente.linkPagamento) + '">Pagar com Mercado Pago</a>'
+          : planosHtml())) +
       '<p><button type="button" class="entrar__link" data-sair>Sair da conta</button></p>', true)
     tela.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
   }
@@ -156,6 +162,9 @@
         '<h2>Olá, ' + esc(cliente.nome || user.displayName || '') + '!</h2>' +
         '<p>A Remasol já preparou a sua assinatura. Confira:</p>' + resumoHtml(cliente) +
         (cliente.status === 'teste' ? '<p class="assinatura-ok">Os primeiros dias são grátis.</p>' : '') +
+        (Planos.linkPagamento(cliente)
+          ? '<p>Para ativar a cobrança mensal, use o botão <strong>Pagar com Mercado Pago</strong> em "Minha assinatura", na barra lateral.</p>'
+          : '') +
         '<p class="assinatura-erro" hidden></p>' +
         '<button type="button" class="btn solid" data-ok>Confirmar e começar</button>', true)
       tela.querySelector('[data-ok]').addEventListener('click', function (e) {
