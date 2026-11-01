@@ -15,7 +15,14 @@
 // };
 //
 // Esses dados não são senha: o Firebase foi feito para eles ficarem no site.
-const FIREBASE_CONFIG = null
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBb_dL0ypyVm8ZgakRoZwUmeg_vcII2a_w",
+  authDomain: "guia-tiss.firebaseapp.com",
+  projectId: "guia-tiss",
+  storageBucket: "guia-tiss.firebasestorage.app",
+  messagingSenderId: "451334655357",
+  appId: "1:451334655357:web:82dbc02290eebfcaf01014"
+}
 
 // Dias de teste grátis contados a partir da criação da conta.
 const DIAS_TESTE = 7
