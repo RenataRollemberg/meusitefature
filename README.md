@@ -52,7 +52,7 @@ meusitefature/
 - [x] WhatsApp: (21) 97666-3134 (`js/config.js`)
 - [x] E-mail de suporte: remasolfaturetiss@gmail.com (`js/config.js`)
 - [x] Domínio registrado: guiaxmltiss.com.br (falta configurar o DNS no Registro.br)
-- [x] Publicado no GitHub Pages em guiaxmltiss.com.br (falta marcar Enforce HTTPS)
+- [x] Publicado no GitHub Pages em guiaxmltiss.com.br, com HTTPS obrigatório (Enforce HTTPS ligado em 01/11/2026)
 - [ ] Revisar a política de privacidade
 
 ## Fase 2 — sistema de geração de XML
