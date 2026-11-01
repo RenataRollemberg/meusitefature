@@ -248,6 +248,8 @@ const Repo = {
     if (id) {
       Object.assign(Repo.operator(id), data)
     } else {
+      // Limite de convênios do plano (só quando o login está ligado; ver js/acesso.js)
+      if (window.Assinatura) window.Assinatura.checarNovoConvenio(Db.state.operators.length)
       Db.state.operators.push(Object.assign({ id: Db.nextId('operator'), createdAt: Fmt.nowUtc() }, data))
     }
     Db.save()

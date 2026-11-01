@@ -15,6 +15,17 @@ Site institucional da **Remasol Fature**.
   o `firebaseConfig` do projeto (Firebase → Configurações do projeto → app da Web) e, em
   Authentication → Settings → Domínios autorizados, adicione `guiaxmltiss.com.br`.
   Próximas etapas: dados na nuvem (Firestore) e assinatura automática (Mercado Pago).
+- **Planos e Faturista (`guias-tiss/js/planos.js`):** Básico R$ 70 (1 médico, 1 convênio), Básico 2 R$ 130
+  (1 médico, 3 convênios), Clínica R$ 280 (5 médicos, 10 convênios), Clínica Premium R$ 510 (10 médicos,
+  15 convênios). O serviço extra **Faturista** tem valor combinado com cada cliente: pode incluir a
+  plataforma ou ser somado ao plano. O limite de convênios já é aplicado no app.
+- **Painel da Remasol (`guias-tiss/admin.html`):** entre com remasolfaturetiss@gmail.com (e-mail confirmado)
+  para cadastrar cada cliente pelo e-mail: plano, situação (período grátis, ativo, suspenso) e valor do
+  Faturista. Na primeira entrada, o médico vê o plano e o valor combinado e confirma.
+  Os cadastros ficam no Firestore, coleção `clientes`.
+- **Regras do banco (`firestore.rules`):** o GitHub Pages não publica este arquivo. Copie o conteúdo para
+  Firebase → Firestore Database → Regras → Publicar. Sem elas, o painel não abre e o app segue só com o
+  teste de 7 dias.
 
 ## Estrutura
 

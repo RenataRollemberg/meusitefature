@@ -1,0 +1,42 @@
+/* Painel Remasol (admin.html). Usa as cores e fontes do aplicativo (css/estilo.css). */
+
+.pagina-admin { min-height: 100vh; }
+
+.admin-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px clamp(16px, 3.5vw, 44px);
+  background: var(--sheet); border-bottom: 1px solid var(--line);
+}
+.admin-topo .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-family: var(--font-display); font-stretch: 112%; font-weight: 800; font-size: 1.15rem; }
+.admin-topo__conta { font-size: 0.85rem; color: var(--muted); word-break: break-all; }
+
+.admin { max-width: 1180px; margin: 0 auto; padding: 28px clamp(16px, 3.5vw, 44px) 64px; }
+.admin:focus { outline: none; }
+
+.admin-login { max-width: 420px; margin: 40px auto; }
+.admin-login h1 { margin-bottom: 4px; }
+
+.label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+.admin-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.admin-numeros .card { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.admin-numeros .card + .card { margin-top: 0; }
+.admin-numeros strong { font-family: var(--font-display); font-stretch: 112%; font-size: 1.5rem; color: var(--ink); }
+
+.tag.red { background: var(--red-soft); color: var(--red); }
+
+div.field > span:first-child { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+div.field label.check { font-weight: 400; min-height: 32px; }
+
+.admin-previa {
+  margin-top: 20px; padding: 14px 16px; max-width: 460px;
+  border: 1px dashed var(--line-strong); border-radius: var(--radius); background: var(--paper);
+}
+.admin-previa table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.admin-previa td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.admin-previa td:last-child { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.admin-previa tfoot td { border-bottom: 0; font-weight: 700; padding-top: 8px; }
+
+@media (max-width: 860px) {
+  .admin-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

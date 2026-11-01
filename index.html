@@ -46,6 +46,7 @@
         <a href="servicos.html">Faturamento</a>
         <a href="#recursos">Recursos</a>
         <a href="#como-funciona">Como funciona</a>
+        <a href="#planos">Planos</a>
         <a href="#perguntas">Dúvidas</a>
         <a href="guias-tiss/entrar.html">Entrar</a>
         <a href="guias-tiss/index.html" class="botao botao--pequeno">Testar agora</a>
@@ -214,32 +215,56 @@
       </div>
     </section>
 
-    <!-- PLANOS -->
-    <section class="secao secao--destaque">
+    <!-- PLANOS (os mesmos valores de guias-tiss/js/planos.js) -->
+    <section id="planos" class="secao secao--destaque">
       <div class="container">
-        <h2 class="secao__titulo produto-titulo-claro">Comece hoje</h2>
-        <div class="planos">
+        <h2 class="secao__titulo produto-titulo-claro">Planos</h2>
+        <p class="planos__intro">7 dias grátis em qualquer plano, sem cartão. Todas as funções liberadas.</p>
+        <div class="planos planos--quatro">
           <article class="plano">
-            <h3>Teste grátis</h3>
-            <p class="plano__preco">R$ 0</p>
+            <h3>Básico</h3>
+            <p class="plano__preco">R$ 70<small>/mês</small></p>
             <ul>
-              <li>Todas as funções liberadas</li>
-              <li>Dados gravados no seu navegador</li>
-              <li>Backup em arquivo</li>
+              <li>1 médico</li>
+              <li>1 convênio</li>
             </ul>
-            <a href="guias-tiss/index.html" class="botao botao--claro">Testar agora</a>
+            <a href="guias-tiss/entrar.html#criar" class="botao botao--claro">Testar 7 dias grátis</a>
+          </article>
+          <article class="plano">
+            <h3>Básico 2</h3>
+            <p class="plano__preco">R$ 130<small>/mês</small></p>
+            <ul>
+              <li>1 médico</li>
+              <li>Até 3 convênios</li>
+            </ul>
+            <a href="guias-tiss/entrar.html#criar" class="botao botao--claro">Testar 7 dias grátis</a>
           </article>
           <article class="plano plano--destaque">
-            <h3>Com acompanhamento</h3>
-            <p class="plano__preco">Sob consulta</p>
+            <h3>Clínica</h3>
+            <p class="plano__preco">R$ 280<small>/mês</small></p>
             <ul>
-              <li>Ajuda para cadastrar seus convênios</li>
-              <li>Conferência do primeiro lote</li>
-              <li>Atualizações do Padrão TISS</li>
+              <li>Até 5 médicos</li>
+              <li>Até 10 convênios</li>
             </ul>
-            <a href="#" class="botao" data-whatsapp="Olá! Quero contratar o Guias TISS com acompanhamento.">Quero contratar</a>
+            <a href="guias-tiss/entrar.html#criar" class="botao">Testar 7 dias grátis</a>
+          </article>
+          <article class="plano">
+            <h3>Clínica Premium</h3>
+            <p class="plano__preco">R$ 510<small>/mês</small></p>
+            <ul>
+              <li>Até 10 médicos</li>
+              <li>Até 15 convênios</li>
+            </ul>
+            <a href="guias-tiss/entrar.html#criar" class="botao botao--claro">Testar 7 dias grátis</a>
           </article>
         </div>
+        <article class="plano plano--extra">
+          <div>
+            <h3>Faturista</h3>
+            <p>Prefere não fazer o faturamento? A Remasol emite as guias, confere e envia os lotes por você. O valor é combinado de acordo com o volume de cada consultório.</p>
+          </div>
+          <a href="#" class="botao" data-whatsapp="Olá! Quero saber do serviço Faturista do Guias TISS.">Pedir orçamento</a>
+        </article>
       </div>
     </section>
 
@@ -253,7 +278,7 @@
         </details>
         <details>
           <summary>Onde ficam os meus dados?</summary>
-          <p>No próprio navegador do computador em que você usa. Eles não são enviados para nenhum servidor. Por isso, use a tela <strong>Backup</strong> com frequência: limpar os dados do navegador apaga tudo.</p>
+          <p>A sua conta e o seu plano ficam guardados no servidor da Remasol (Google Firebase). As guias, os beneficiários e os lotes, por enquanto, ficam no navegador do computador em que você usa: use a tela <strong>Backup</strong> com frequência, porque limpar os dados do navegador apaga essas informações.</p>
         </details>
         <details>
           <summary>Quais versões do Padrão TISS são aceitas?</summary>
@@ -269,7 +294,7 @@
         </details>
         <details>
           <summary>Prefere que eu faça o faturamento por você?</summary>
-          <p>A Remasol Fature também faz o faturamento completo e entrega o XML pronto. <a href="servicos.html#faturamento">Conheça o serviço</a>.</p>
+          <p>Com o serviço <strong>Faturista</strong>, a Remasol emite as guias, confere e envia os lotes por você. O valor é combinado com cada consultório e aparece na sua conta quando você entra. <a href="servicos.html#faturamento">Conheça o serviço</a>.</p>
         </details>
       </div>
     </section>

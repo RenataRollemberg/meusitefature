@@ -34,6 +34,30 @@ function obterAuth() {
   return firebaseAuthPromise
 }
 
+// Banco de dados (Firestore): cadastro dos clientes, plano e serviço Faturista.
+let firebaseDbPromise = null
+function obterDb() {
+  if (!firebaseDbPromise) {
+    firebaseDbPromise = obterAuth()
+      .then(function () { return carregarScript('https://www.gstatic.com/firebasejs/' + FIREBASE_VERSAO + '/firebase-firestore-compat.js') })
+      .then(function () { return firebase.firestore() })
+  }
+  return firebaseDbPromise
+}
+
+// Documento do cliente na coleção "clientes" (o nome do documento é o e-mail).
+function docCliente(db, email) {
+  return db.collection('clientes').doc(String(email).trim().toLowerCase())
+}
+
+// Converte datas do Firestore (Timestamp) ou texto em Date.
+function paraData(valor) {
+  if (!valor) return null
+  if (typeof valor.toDate === 'function') return valor.toDate()
+  const d = new Date(valor)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 // Dias de teste que ainda restam para a conta (0 quando acabou).
 function diasRestantesTeste(user) {
   const criada = new Date(user.metadata.creationTime).getTime()
@@ -52,7 +76,9 @@ function mensagemErro(err) {
     'auth/wrong-password': 'E-mail ou senha incorretos.',
     'auth/user-not-found': 'E-mail ou senha incorretos.',
     'auth/too-many-requests': 'Muitas tentativas. Espere alguns minutos e tente de novo.',
-    'auth/network-request-failed': 'Sem conexão com a internet.'
+    'auth/network-request-failed': 'Sem conexão com a internet.',
+    'permission-denied': 'Sem permissão. Confira se as regras do Firestore foram publicadas.',
+    'unavailable': 'Sem conexão com o servidor. Verifique a internet.'
   }
   return mapa[err && err.code] || (err && err.message) || 'Algo deu errado. Tente de novo.'
 }

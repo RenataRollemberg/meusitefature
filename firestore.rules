@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Regras do banco de dados (Firestore) do Guias TISS — projeto "guia-tiss".
+// O GitHub Pages não publica este arquivo: copie o conteúdo para o console do Firebase
+// (Firestore Database → Regras → Publicar) sempre que ele mudar.
+//
+// Coleção "clientes": um documento por cliente, com o e-mail como nome do documento.
+// - Só a Remasol (e-mails de admin, confirmados) cadastra plano, situação e o valor do Faturista.
+// - O médico lê apenas o próprio cadastro e só pode confirmar que viu a assinatura (aceitoEm).
+// - Quem cria a conta sozinho ganha um cadastro em período grátis, sem plano e sem Faturista.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function emailDoUsuario() {
+      return request.auth.token.email.lower();
+    }
+
+    // Mesma lista de ADMIN_EMAILS em guias-tiss/js/firebase-config.js
+    function admin() {
+      return logado()
+        && request.auth.token.email_verified == true
+        && emailDoUsuario() in ['remasolfaturetiss@gmail.com'];
+    }
+
+    function dono(clienteId) {
+      return logado()
+        && request.auth.token.email_verified == true
+        && emailDoUsuario() == clienteId;
+    }
+
+    match /clientes/{clienteId} {
+      allow read: if admin() || dono(clienteId);
+
+      allow create: if admin() || (
+        dono(clienteId)
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'status', 'origem', 'criadoEm'])
+        && request.resource.data.email == clienteId
+        && request.resource.data.status == 'teste'
+        && request.resource.data.origem == 'site'
+        && request.resource.data.criadoEm == request.time
+      );
+
+      allow update: if admin() || (
+        dono(clienteId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceitoEm'])
+        && request.resource.data.aceitoEm == request.time
+      );
+
+      allow delete: if admin();
+    }
+
+    // Todo o resto fica fechado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

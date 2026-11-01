@@ -334,3 +334,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
   .seta { font-size: 1.4rem; }
   .secao { padding: 64px 0; }
 }
+
+/* Planos do Guias TISS: quatro planos + serviço Faturista */
+.planos__intro { text-align: center; color: rgba(255,255,255,.85); margin-top: 10px; }
+.planos--quatro { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1100px; gap: 18px; }
+.planos--quatro .plano { padding: 24px; }
+.plano__preco small { font-size: 0.95rem; font-weight: 400; opacity: .75; margin-left: 2px; }
+.plano--extra {
+  max-width: 1100px; margin: 18px auto 0;
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.plano--extra p { color: rgba(255,255,255,.88); margin-top: 6px; max-width: 680px; }
+@media (max-width: 1000px) { .planos--quatro { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .planos--quatro { grid-template-columns: 1fr; } }

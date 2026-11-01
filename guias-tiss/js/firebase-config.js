@@ -26,3 +26,7 @@ const FIREBASE_CONFIG = {
 
 // Dias de teste grátis contados a partir da criação da conta.
 const DIAS_TESTE = 7
+
+// E-mails que entram no painel da Remasol (admin.html), onde você define o plano e o
+// valor do serviço Faturista de cada cliente. Precisa ser igual à lista em firestore.rules.
+const ADMIN_EMAILS = ['remasolfaturetiss@gmail.com']

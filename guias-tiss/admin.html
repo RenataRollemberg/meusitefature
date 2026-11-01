@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Painel Remasol | Guias TISS</title>
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/estilo.css">
+  <link rel="stylesheet" href="css/admin.css?v=1">
+</head>
+<body class="pagina-admin">
+  <header class="admin-topo">
+    <a class="brand" href="index.html">
+      <img src="img/icone.svg" alt="" width="30" height="30">
+      <span>Painel Remasol</span>
+    </a>
+    <div class="admin-topo__conta" id="conta"></div>
+  </header>
+
+  <main class="admin" id="painel" tabindex="-1">
+    <p class="muted">Carregando…</p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/firebase-config.js?v=4"></script>
+  <script src="js/firebase-carregar.js?v=4"></script>
+  <script src="js/planos.js?v=1"></script>
+  <script src="js/admin.js?v=1"></script>
+</body>
+</html>
