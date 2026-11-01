@@ -3,13 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remasol Fature | Faturamento de convênios e XML para clínicas</title>
-  <meta name="description" content="Remasol Fature cuida do faturamento de convênios, entrega o arquivo XML pronto para envio ao convênio e oferece um sistema de baixo custo com banco de dados local para clínicas e consultórios.">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <title>Guias TISS | Gerador de guias e lote XML TISS no navegador — Remasol Fature</title>
+  <meta name="description" content="Guias TISS: emita guia de consulta e SP/SADT no modelo da ANS e gere o lote XML no Padrão TISS 4.01, 4.02 ou 4.03 com hash MD5, direto no navegador, sem instalar nada.">
+  <meta name="keywords" content="gerador de XML TISS, lote XML TISS, guia SP/SADT, guia de consulta, Padrão TISS 4.03, faturamento de convênios, TUSS 22">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Guias TISS — guias e lote XML TISS sem instalar nada">
+  <meta property="og:description" content="Emita guias de consulta e SP/SADT e gere o lote XML no Padrão TISS direto no navegador.">
+  <meta property="og:image" content="https://guiaxmltiss.com.br/assets/guias-tiss-guias.jpg">
+  <meta property="og:url" content="https://guiaxmltiss.com.br/">
+  <link rel="canonical" href="https://guiaxmltiss.com.br/">
+  <link rel="icon" href="guias-tiss/img/icone.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Guias TISS",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Navegador (Chrome ou Edge)",
+    "description": "Emissão de guia de consulta e SP/SADT e geração de lote XML no Padrão TISS 4.01, 4.02 e 4.03 com hash MD5.",
+    "publisher": { "@type": "Organization", "name": "Remasol Fature" }
+  }
+  </script>
 </head>
 <body>
 
@@ -25,15 +43,11 @@
       </button>
 
       <nav id="menu" class="menu">
-        <a href="#faturamento">Faturamento</a>
-        <a href="#xml">XML</a>
-        <a href="gerador-xml.html">Guias TISS</a>
-        <a href="#sistema">Sistema</a>
-        <a href="digitalizacao.html">Digitalização</a>
-        <a href="#contato">Contato</a>
-        <!-- FASE 2: quando a área do cliente existir, remova o atributo "hidden" -->
-        <a href="https://app.remasolfature.com.br" class="menu__cliente" hidden>Área do cliente</a>
-        <a href="#contato" class="botao botao--pequeno">Fale comigo</a>
+        <a href="servicos.html">Faturamento</a>
+        <a href="#recursos">Recursos</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#perguntas">Dúvidas</a>
+        <a href="guias-tiss/index.html" class="botao botao--pequeno">Testar agora</a>
       </nav>
     </div>
   </header>
@@ -41,177 +55,228 @@
   <main>
 
     <!-- INÍCIO -->
-    <section id="inicio" class="hero">
+    <section class="hero produto-hero">
       <div class="container">
-
-        <!-- Caixa clicável que leva à página de digitalização -->
-        <a href="digitalizacao.html" class="aviso-digital">
-          <span class="aviso-digital__icone" aria-hidden="true">📁</span>
-          <span class="aviso-digital__texto">
-            <strong>Ainda tem fichas em papel?</strong>
-            Suas fichas podem ser digitalizadas e convertidas em arquivo digital.
-          </span>
-          <span class="aviso-digital__seta" aria-hidden="true">→</span>
-        </a>
-
-        <!-- Caixa clicável que leva à página do gerador de XML (Guias TISS) -->
-        <a href="gerador-xml.html" class="aviso-digital aviso-digital--produto">
-          <img class="aviso-digital__icone" src="guias-tiss/img/icone.svg" alt="" width="34" height="34">
-          <span class="aviso-digital__texto">
-            <strong>Novo: Guias TISS, o gerador de XML no navegador</strong>
-            Emita guias de consulta e SP/SADT e gere o lote XML você mesmo. Teste grátis.
-          </span>
-          <span class="aviso-digital__seta" aria-hidden="true">→</span>
-        </a>
-
+        <a href="servicos.html" class="voltar">Conheça também os serviços de faturamento da Remasol Fature →</a>
         <div class="hero__grade">
           <div class="hero__texto">
-            <p class="selo">Para consultórios e clínicas</p>
-            <h1>Faturamento de convênios sem dor de cabeça.</h1>
+            <p class="selo">Novo · Gerador de XML</p>
+            <h1>Guias e lote XML TISS prontos, direto no navegador.</h1>
             <p class="hero__sub">
-              Cuido do faturamento da sua clínica, entrego o XML pronto para envio
-              ao convênio e ofereço um sistema simples e de baixo custo, que roda no
-              seu próprio computador.
+              O <strong>Guias TISS</strong> emite guia de consulta e SP/SADT no modelo
+              da ANS e gera o lote XML para você enviar no portal do convênio.
+              Sem instalar nada e sem digitar guia por guia no portal.
             </p>
             <div class="hero__acoes">
-              <a href="#contato" class="botao">Quero um orçamento</a>
-              <a href="#faturamento" class="botao botao--contorno">Conhecer os serviços</a>
+              <a href="guias-tiss/index.html" class="botao">Testar agora grátis</a>
+              <a href="#" class="botao botao--contorno" data-whatsapp="Olá! Vi o Guias TISS no site da Remasol Fature e quero saber mais.">Falar no WhatsApp</a>
             </div>
+            <ul class="selos-lista" aria-label="Destaques">
+              <li>TISS 4.01 · 4.02 · 4.03</li>
+              <li>Tabela TUSS 22</li>
+              <li>Hash MD5</li>
+              <li>Sem instalação</li>
+            </ul>
           </div>
 
-          <div class="hero__ilustracao" aria-hidden="true">
-            <div class="cartao cartao--digital">
-              <span class="cartao__titulo">lote_convenio.xml</span>
-              <code>&lt;loteGuias&gt;</code>
-              <code>&nbsp;&nbsp;&lt;guia/&gt;</code>
-              <code>&nbsp;&nbsp;&lt;guia/&gt;</code>
-              <code>&lt;/loteGuias&gt;</code>
-              <span class="cartao__ok">✓ pronto para enviar ao convênio</span>
-            </div>
-          </div>
+          <figure class="vitrine">
+            <div class="vitrine__barra" aria-hidden="true"><span></span><span></span><span></span></div>
+            <img src="assets/guias-tiss-guias.jpg" width="1280" height="800"
+                 alt="Tela de guias do Guias TISS com guias de consulta pendentes, prontas para entrar em um lote XML">
+          </figure>
         </div>
       </div>
     </section>
 
-    <!-- FATURAMENTO -->
-    <section id="faturamento" class="secao">
-      <div class="container bloco">
-        <div class="bloco__texto">
-          <p class="selo">Serviço</p>
-          <h2>Faturamento de convênios</h2>
-          <p>
-            Confiro os atendimentos, monto as guias e organizo os lotes de cada
-            convênio. Menos erro, menos glosa e mais tempo livre para a sua equipe.
-          </p>
-        </div>
-        <ul class="lista-check">
-          <li>Conferência dos atendimentos antes do envio</li>
-          <li>Guias organizadas por convênio</li>
-          <li>Acompanhamento e recurso de glosas</li>
-          <li>Relatório do que foi faturado no mês</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- XML -->
-    <section id="xml" class="secao secao--clara">
-      <div class="container bloco bloco--invertido">
-        <div class="bloco__texto">
-          <p class="selo">Serviço</p>
-          <h2>Arquivo XML pronto para o convênio</h2>
-          <p>
-            Entrego o arquivo digital XML no padrão exigido pelos convênios.
-            A secretária só importa no portal, sem digitar guia por guia.
-          </p>
-        </div>
-        <ul class="lista-check">
-          <li>Arquivo no padrão do convênio</li>
-          <li>Importação direta no portal</li>
-          <li>Fim da digitação manual das guias</li>
-          <li>Envio mais rápido, pagamento mais rápido</li>
-        </ul>
-      </div>
-      <div class="container chamada produto-bloco">
-        <p class="secao__sub">Prefere gerar o XML na própria clínica?</p>
-        <a href="gerador-xml.html" class="botao botao--contorno">Conheça o Guias TISS</a>
-      </div>
-    </section>
-
-    <!-- SISTEMA -->
-    <section id="sistema" class="secao secao--destaque">
-      <div class="container bloco">
-        <div class="bloco__texto">
-          <p class="selo selo--claro">Sistema</p>
-          <h2>Sistema de baixo custo com banco de dados local</h2>
-          <p>
-            Um programa simples para a clínica, que guarda os dados no próprio
-            computador. Sem mensalidade cara e sem depender da internet para funcionar.
-          </p>
-          <a href="#contato" class="botao botao--claro">Quero conhecer o sistema</a>
-        </div>
-        <div class="cards cards--dois">
-          <article class="card card--escuro">
-            <div class="card__icone">💰</div>
-            <h3>Baixo custo</h3>
-            <p>Pensado para consultórios pequenos e médios, que precisam do essencial.</p>
+    <!-- RECURSOS -->
+    <section id="recursos" class="secao">
+      <div class="container">
+        <h2 class="secao__titulo">Tudo o que o faturamento precisa</h2>
+        <p class="secao__sub">Da guia preenchida ao arquivo XML aceito pelo portal do convênio.</p>
+        <div class="cards">
+          <article class="card">
+            <div class="card__icone">🩺</div>
+            <h3>Guia de consulta e SP/SADT</h3>
+            <p>Preencha e imprima no modelo da ANS para o paciente assinar.</p>
           </article>
-          <article class="card card--escuro">
-            <div class="card__icone">💻</div>
-            <h3>Dados no seu computador</h3>
-            <p>Banco de dados local: as informações ficam com a clínica.</p>
-          </article>
-          <article class="card card--escuro">
-            <div class="card__icone">📶</div>
-            <h3>Funciona sem internet</h3>
-            <p>Caiu a internet? O atendimento continua normalmente.</p>
-          </article>
-          <article class="card card--escuro">
+          <article class="card">
             <div class="card__icone">🧾</div>
-            <h3>Gera o XML</h3>
-            <p>A própria clínica gera o arquivo para enviar ao convênio.</p>
+            <h3>Lote XML no Padrão TISS</h3>
+            <p>Versões 4.01, 4.02 e 4.03, com hash MD5, prontas para o upload no portal.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">💲</div>
+            <h3>Valores por convênio</h3>
+            <p>Cada convênio tem a sua tabela. A guia já abre com o valor certo.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">🔎</div>
+            <h3>Busca na TUSS 22 e CBO-S</h3>
+            <p>Encontre o código do procedimento pelo nome, sem consultar outra tabela.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">👤</div>
+            <h3>Cadastro de beneficiários</h3>
+            <p>Carteirinha vinculada ao paciente: trocou o cartão, as guias pendentes atualizam.</p>
+          </article>
+          <article class="card">
+            <div class="card__icone">💾</div>
+            <h3>Backup em arquivo</h3>
+            <p>Salve uma cópia dos seus dados e restaure quando precisar.</p>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- CONTATO -->
-    <section id="contato" class="secao">
-      <div class="container contato">
-        <div>
-          <h2 class="secao__titulo">Vamos conversar?</h2>
-          <p class="secao__sub secao__sub--esquerda">
-            Conte um pouco sobre o seu consultório e eu retorno com uma proposta.
+    <!-- TELAS -->
+    <section class="secao secao--clara">
+      <div class="container bloco">
+        <div class="bloco__texto">
+          <p class="selo">Na prática</p>
+          <h2>Marque as guias, gere o lote, envie</h2>
+          <p>
+            As guias pendentes ficam juntas. Selecione as do mês, gere o lote e baixe
+            o XML. O arquivo sai no nome e no formato que o padrão exige.
           </p>
-          <a class="botao botao--whatsapp" id="link-whatsapp" href="#" target="_blank" rel="noopener">
-            Chamar no WhatsApp
-          </a>
-          <p class="contato__email">
-            ou por e-mail: <a id="link-email" href="#"></a>
+          <a href="guias-tiss/index.html" class="botao">Abrir o Guias TISS</a>
+        </div>
+        <figure class="vitrine">
+          <div class="vitrine__barra" aria-hidden="true"><span></span><span></span><span></span></div>
+          <img src="assets/guias-tiss-lotes.jpg" width="1280" height="800" loading="lazy"
+               alt="Tela de lotes XML do Guias TISS com um lote gerado e o botão Baixar XML">
+        </figure>
+      </div>
+      <div class="container bloco bloco--invertido produto-bloco">
+        <div class="bloco__texto">
+          <p class="selo">SP/SADT</p>
+          <h2>Guia SP/SADT completa</h2>
+          <p>
+            Senha, autorização, solicitante, vários procedimentos com quantidade e fator.
+            O total é calculado sozinho.
           </p>
         </div>
+        <figure class="vitrine">
+          <div class="vitrine__barra" aria-hidden="true"><span></span><span></span><span></span></div>
+          <img src="assets/guias-tiss-sadt.jpg" width="1280" height="800" loading="lazy"
+               alt="Formulário de nova guia SP/SADT do Guias TISS">
+        </figure>
+      </div>
+    </section>
 
-        <form class="form-contato" id="form-contato">
-          <label for="contato-nome">Nome</label>
-          <input id="contato-nome" name="nome" type="text" required autocomplete="name">
+    <!-- COMO FUNCIONA -->
+    <section id="como-funciona" class="secao">
+      <div class="container">
+        <h2 class="secao__titulo">Como funciona</h2>
+        <p class="secao__sub">A mesma sequência todo mês.</p>
+        <ol class="passos">
+          <li class="passo">
+            <span class="passo__numero">1</span>
+            <h3>Cadastre o convênio</h3>
+            <p>Registro ANS, seu código na operadora e a versão TISS que ela usa.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">2</span>
+            <h3>Emita as guias</h3>
+            <p>Consulta ou SP/SADT, com impressão para o paciente assinar.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">3</span>
+            <h3>Gere o lote</h3>
+            <p>Selecione as guias pendentes e baixe o arquivo XML.</p>
+          </li>
+          <li class="passo">
+            <span class="passo__numero">4</span>
+            <h3>Envie no portal</h3>
+            <p>Faça o upload no portal do convênio e marque o lote como enviado.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
 
-          <label for="contato-clinica">Clínica ou consultório</label>
-          <input id="contato-clinica" name="clinica" type="text">
+    <!-- PARA QUEM É -->
+    <section class="secao secao--clara">
+      <div class="container bloco">
+        <div class="bloco__texto">
+          <p class="selo">Para quem é</p>
+          <h2>Feito para quem fatura convênio</h2>
+          <p>
+            Para consultórios, clínicas e faturistas que querem parar de digitar
+            guia por guia no portal de cada operadora.
+          </p>
+        </div>
+        <ul class="lista-check">
+          <li>Médicos que emitem as próprias guias</li>
+          <li>Secretárias e recepções de consultório</li>
+          <li>Faturistas que atendem várias clínicas</li>
+          <li>Quem já teve glosa por campo faltando ou código errado</li>
+        </ul>
+      </div>
+    </section>
 
-          <label for="contato-servico">Tenho interesse em</label>
-          <select id="contato-servico" name="servico">
-            <option>Faturamento de convênios</option>
-            <option>Arquivo XML para o convênio</option>
-            <option>Gerador de XML (Guias TISS)</option>
-            <option>Sistema com banco de dados local</option>
-            <option>Digitalização de fichas</option>
-            <option>Mais de um serviço</option>
-          </select>
+    <!-- PLANOS -->
+    <section class="secao secao--destaque">
+      <div class="container">
+        <h2 class="secao__titulo produto-titulo-claro">Comece hoje</h2>
+        <div class="planos">
+          <article class="plano">
+            <h3>Teste grátis</h3>
+            <p class="plano__preco">R$ 0</p>
+            <ul>
+              <li>Todas as funções liberadas</li>
+              <li>Dados gravados no seu navegador</li>
+              <li>Backup em arquivo</li>
+            </ul>
+            <a href="guias-tiss/index.html" class="botao botao--claro">Testar agora</a>
+          </article>
+          <article class="plano plano--destaque">
+            <h3>Com acompanhamento</h3>
+            <p class="plano__preco">Sob consulta</p>
+            <ul>
+              <li>Ajuda para cadastrar seus convênios</li>
+              <li>Conferência do primeiro lote</li>
+              <li>Atualizações do Padrão TISS</li>
+            </ul>
+            <a href="#" class="botao" data-whatsapp="Olá! Quero contratar o Guias TISS com acompanhamento.">Quero contratar</a>
+          </article>
+        </div>
+      </div>
+    </section>
 
-          <label for="contato-mensagem">Mensagem</label>
-          <textarea id="contato-mensagem" name="mensagem" rows="4"></textarea>
+    <!-- PERGUNTAS -->
+    <section id="perguntas" class="secao">
+      <div class="container faq">
+        <h2 class="secao__titulo">Perguntas frequentes</h2>
+        <details>
+          <summary>Preciso instalar alguma coisa?</summary>
+          <p>Não. O Guias TISS abre no navegador (Chrome ou Edge recomendados) do seu computador.</p>
+        </details>
+        <details>
+          <summary>Onde ficam os meus dados?</summary>
+          <p>No próprio navegador do computador em que você usa. Eles não são enviados para nenhum servidor. Por isso, use a tela <strong>Backup</strong> com frequência: limpar os dados do navegador apaga tudo.</p>
+        </details>
+        <details>
+          <summary>Quais versões do Padrão TISS são aceitas?</summary>
+          <p>4.01.00, 4.02.00 e 4.03.00. A versão é escolhida no cadastro de cada convênio, conforme a exigência da operadora.</p>
+        </details>
+        <details>
+          <summary>O programa envia o lote direto para o convênio?</summary>
+          <p>Ele gera o arquivo XML no formato exigido. O envio é feito por você, no portal da operadora, como os convênios pedem hoje.</p>
+        </details>
+        <details>
+          <summary>Prefere que eu faça o faturamento por você?</summary>
+          <p>A Remasol Fature também faz o faturamento completo e entrega o XML pronto. <a href="servicos.html#faturamento">Conheça o serviço</a>.</p>
+        </details>
+      </div>
+    </section>
 
-          <button type="submit" class="botao">Enviar pelo WhatsApp</button>
-        </form>
+    <!-- CHAMADA FINAL -->
+    <section class="secao secao--clara">
+      <div class="container chamada">
+        <h2>Gere o seu primeiro lote XML hoje</h2>
+        <div class="hero__acoes produto-centro">
+          <a href="guias-tiss/index.html" class="botao">Testar agora grátis</a>
+          <a href="#" class="botao botao--whatsapp" data-whatsapp="Olá! Vi o Guias TISS no site da Remasol Fature e tenho uma dúvida.">Tirar dúvida no WhatsApp</a>
+        </div>
       </div>
     </section>
 
@@ -219,7 +284,8 @@
 
   <footer class="rodape">
     <div class="container rodape__linha">
-      <span>© <span id="ano"></span> Remasol Fature</span>
+      <span>© <span id="ano"></span> Remasol Fature · Guias TISS</span>
+      <span>Padrão TISS é o padrão de troca de informações da ANS.</span>
       <a href="privacidade.html">Política de privacidade</a>
     </div>
   </footer>
