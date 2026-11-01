@@ -25,6 +25,7 @@
     $('#aba-entrar').setAttribute('aria-selected', String(painel !== 'criar'))
     $('#aba-criar').setAttribute('aria-selected', String(painel === 'criar'))
     aviso('')
+    $('#reenviar').hidden = true
   }
   document.querySelectorAll('[data-aba]').forEach(function (b) {
     b.addEventListener('click', function () { mostrar(b.dataset.aba) })
@@ -32,6 +33,7 @@
   if (location.hash === '#criar') mostrar('criar')
 
   function irParaApp() { location.href = 'index.html' }
+  let usuarioSemConfirmar = null
 
   function ocupado(form, sim) {
     form.querySelectorAll('button, input').forEach(function (el) { el.disabled = sim })
@@ -51,11 +53,11 @@
       auth.signInWithEmailAndPassword($('#e-email').value.trim(), $('#e-senha').value)
         .then(function (cred) {
           if (!cred.user.emailVerified) {
-            return cred.user.sendEmailVerification().then(function () {
-              return auth.signOut()
-            }).then(function () {
-              aviso('Confirme seu e-mail antes de entrar. Enviamos um novo link para ' + cred.user.email + '.', 'erro')
-            })
+            // Não reenvia sozinho (o Firebase bloqueia envios repetidos); oferece o botão.
+            usuarioSemConfirmar = cred.user
+            aviso('Seu e-mail ainda não foi confirmado. Abra o link que enviamos para ' + cred.user.email + ' (veja também o Spam) e depois entre de novo.', 'erro')
+            $('#reenviar').hidden = false
+            return
           }
           irParaApp()
         })
@@ -87,6 +89,17 @@
         })
         .catch(function (err) { aviso(mensagemErro(err), 'erro') })
         .finally(function () { ocupado(form, false) })
+    })
+
+    $('#reenviar').addEventListener('click', function () {
+      const user = usuarioSemConfirmar
+      if (!user) return
+      const botao = $('#reenviar')
+      botao.disabled = true
+      user.sendEmailVerification()
+        .then(function () { aviso('Enviamos um novo link para ' + user.email + '. Pode levar alguns minutos.', 'ok') })
+        .catch(function (err) { aviso(mensagemErro(err), 'erro') })
+        .finally(function () { setTimeout(function () { botao.disabled = false }, 60000) })
     })
 
     $('#form-recuperar').addEventListener('submit', function (e) {
