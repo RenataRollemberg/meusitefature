@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar | Guias TISS</title>
+  <meta name="description" content="Entre ou crie sua conta no Guias TISS e teste grátis por 7 dias.">
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/estilo.css">
+  <link rel="stylesheet" href="css/entrar.css">
+</head>
+<body class="pagina-entrar">
+  <main class="entrar">
+    <a class="entrar__marca" href="../index.html">
+      <img src="img/icone.svg" alt="" width="40" height="40">
+      <span>Guias TISS</span>
+    </a>
+
+    <section class="entrar__cartao" aria-labelledby="entrar-titulo">
+      <!-- Aviso enquanto o login não estiver configurado -->
+      <div id="em-breve" hidden>
+        <h1 id="entrar-titulo">Contas em breve</h1>
+        <p>O cadastro com e-mail e senha está sendo preparado. Enquanto isso, o teste continua liberado.</p>
+        <a class="btn solid entrar__largo" href="index.html">Abrir o Guias TISS</a>
+        <p class="entrar__rodape">Dúvidas: <a href="mailto:remasolfaturetiss@gmail.com">remasolfaturetiss@gmail.com</a></p>
+      </div>
+
+      <div id="area-login" hidden>
+        <div class="entrar__abas" role="tablist">
+          <button type="button" role="tab" id="aba-entrar" aria-selected="true" data-aba="entrar">Entrar</button>
+          <button type="button" role="tab" id="aba-criar" aria-selected="false" data-aba="criar">Criar conta</button>
+        </div>
+
+        <!-- ENTRAR -->
+        <form id="form-entrar" class="entrar__form" data-painel="entrar" novalidate>
+          <h1>Entrar na sua conta</h1>
+          <label for="e-email">E-mail</label>
+          <input id="e-email" type="email" autocomplete="email" required>
+          <label for="e-senha">Senha</label>
+          <input id="e-senha" type="password" autocomplete="current-password" required>
+          <button class="btn solid entrar__largo" type="submit">Entrar</button>
+          <button class="entrar__link" type="button" data-aba="recuperar">Esqueci a senha</button>
+        </form>
+
+        <!-- CRIAR CONTA -->
+        <form id="form-criar" class="entrar__form" data-painel="criar" novalidate hidden>
+          <h1>Teste grátis por <span class="js-dias-teste">7</span> dias</h1>
+          <p class="entrar__sub">Sem cartão. Depois do teste, assine para continuar.</p>
+          <label for="c-nome">Seu nome</label>
+          <input id="c-nome" type="text" autocomplete="name" required>
+          <label for="c-email">E-mail</label>
+          <input id="c-email" type="email" autocomplete="email" required>
+          <label for="c-senha">Senha <small>(mínimo 6 caracteres)</small></label>
+          <input id="c-senha" type="password" autocomplete="new-password" minlength="6" required>
+          <label for="c-senha2">Repita a senha</label>
+          <input id="c-senha2" type="password" autocomplete="new-password" minlength="6" required>
+          <label class="entrar__aceite">
+            <input id="c-aceite" type="checkbox" required>
+            <span>Li e aceito os <a href="../privacidade.html" target="_blank" rel="noopener">termos de uso e a política de privacidade</a>.</span>
+          </label>
+          <button class="btn solid entrar__largo" type="submit">Criar conta e começar o teste</button>
+        </form>
+
+        <!-- RECUPERAR SENHA -->
+        <form id="form-recuperar" class="entrar__form" data-painel="recuperar" novalidate hidden>
+          <h1>Recuperar a senha</h1>
+          <p class="entrar__sub">Enviamos um link para você criar uma nova senha.</p>
+          <label for="r-email">E-mail da conta</label>
+          <input id="r-email" type="email" autocomplete="email" required>
+          <button class="btn solid entrar__largo" type="submit">Enviar link</button>
+          <button class="entrar__link" type="button" data-aba="entrar">Voltar para Entrar</button>
+        </form>
+
+        <p class="entrar__msg" id="msg" role="status" aria-live="polite"></p>
+        <p class="entrar__rodape">Suporte: <a href="mailto:remasolfaturetiss@gmail.com">remasolfaturetiss@gmail.com</a></p>
+      </div>
+    </section>
+
+    <a class="entrar__voltar" href="../index.html">← Conhecer o Guias TISS</a>
+  </main>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-carregar.js"></script>
+  <script src="js/entrar.js"></script>
+</body>
+</html>

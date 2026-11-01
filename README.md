@@ -9,6 +9,12 @@ Site institucional da **Remasol Fature**.
 - **Digitalização (`digitalizacao.html`):** fichas e prontuários em papel → arquivo digital.
 - **App (`guias-tiss/`):** o próprio aplicativo fica em `guias-tiss/` (cópia da pasta `web/` do repositório `xml`;
   quando o app mudar lá, copie a pasta de novo). Os dados ficam no navegador de quem usa.
+- **Login (`guias-tiss/entrar.html`):** entrar, criar conta (teste grátis de 7 dias) e recuperar senha,
+  com Firebase Authentication. Fica **desligado** enquanto `guias-tiss/js/firebase-config.js` tiver
+  `FIREBASE_CONFIG = null`: a página mostra "Contas em breve" e o app abre direto. Para ligar, cole ali
+  o `firebaseConfig` do projeto (Firebase → Configurações do projeto → app da Web) e, em
+  Authentication → Settings → Domínios autorizados, adicione `guiaxmltiss.com.br`.
+  Próximas etapas: dados na nuvem (Firestore) e assinatura automática (Mercado Pago).
 
 ## Estrutura
 
