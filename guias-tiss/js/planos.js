@@ -22,6 +22,13 @@ const Planos = (function () {
     descricao: 'Faturamento feito pela Remasol: emissão das guias, conferência e envio dos lotes.'
   }
 
+  // Links prontos do Mercado Pago para valores de Faturista já combinados.
+  // Aparecem como sugestão no campo de link do painel (admin.html).
+  const LINKS_FATURISTA = [
+    { valor: 830, link: 'https://mpago.la/2gkDEd9' },
+    { valor: 600, link: 'https://mpago.la/32ro3mj' }
+  ]
+
   const STATUS = [
     { value: 'teste', label: 'Período grátis' },
     { value: 'ativo', label: 'Ativo' },
@@ -81,6 +88,7 @@ const Planos = (function () {
     DIAS_GRATIS: DIAS_GRATIS,
     FATURISTA: FATURISTA,
     STATUS: STATUS,
+    LINKS_FATURISTA: LINKS_FATURISTA,
     get: get,
     money: money,
     limitesTexto: limitesTexto,

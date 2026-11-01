@@ -212,7 +212,10 @@
       '<label class="check"><input type="radio" name="fat-modo" value="soma"' + (fat.incluiPlataforma === false ? ' checked' : '') + '>Somar ao valor do plano</label></div>' +
       '</div>' +
       '<div class="form-section">Pagamento</div><div class="grid">' +
-      '<label class="field c12">Link de assinatura do Mercado Pago (opcional)<input id="link" type="url" placeholder="https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=…" value="' + esc(c.linkPagamento) + '">' +
+      '<label class="field c12">Link de assinatura do Mercado Pago (opcional)<input id="link" type="url" placeholder="https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=…" value="' + esc(c.linkPagamento) + '" list="links-prontos">' +
+      '<datalist id="links-prontos">' + Planos.LINKS_FATURISTA.map(function (l) {
+        return '<option value="' + esc(l.link) + '">Faturista ' + esc(Planos.money(l.valor)) + '</option>'
+      }).join('') + '</datalist>' +
       '<span class="hint">Use para valores combinados (ex.: Faturista). Vazio = o cliente usa o link do plano.</span></label></div>' +
       '<div class="form-section">Observação (só você vê)</div>' +
       '<label class="field"><textarea id="obs" rows="2" maxlength="500">' + esc(c.observacao) + '</textarea></label>' +
@@ -241,6 +244,8 @@
 
     function atualizar() {
       const d = ler()
+      const pronto = d.faturista.ativo && Planos.LINKS_FATURISTA.find(function (l) { return l.valor === d.faturista.valor })
+      if (pronto && !$('#link').value.trim()) $('#link').value = pronto.link
       $('#fat-campos').hidden = !d.faturista.ativo
       $('#teste-wrap').hidden = d.status !== 'teste'
       const previa = { plano: d.plano, faturista: Object.assign({}, d.faturista, { valor: Number.isNaN(d.faturista.valor) ? 0 : d.faturista.valor }) }
