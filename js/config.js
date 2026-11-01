@@ -5,8 +5,8 @@
 
 const CONFIG = {
   // WhatsApp com DDI + DDD + número, só números. Ex.: 5521999999999
-  // TODO: trocar pelo número real
-  whatsapp: "5521900000000",
+  // WhatsApp de contato e suporte: (21) 97666-3134
+  whatsapp: "5521976663134",
 
   // E-mail de suporte e contato
   email: "remasolfaturetiss@gmail.com",
