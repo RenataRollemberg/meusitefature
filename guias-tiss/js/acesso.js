@@ -181,7 +181,7 @@
   function carregarCliente(user) {
     return obterDb().then(function (db) {
       const ref = docCliente(db, user.email)
-      return ref.get().then(function (snap) {
+      return comTempo(ref.get(), 8000).then(function (snap) {
         if (snap.exists) return { db: db, dados: snap.data() }
         const novo = {
           nome: user.displayName || '',
@@ -190,13 +190,16 @@
           origem: 'site',
           criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         }
-        return ref.set(novo).then(function () { return { db: db, dados: novo } })
+        return comTempo(ref.set(novo), 8000).then(function () { return { db: db, dados: novo } })
       })
     }).catch(function (err) {
       console.warn('Guias TISS: cadastro do cliente indisponível —', err && err.message)
       return { db: null, dados: null }
     })
   }
+
+  // Rede de segurança: nunca deixa o app escondido por mais de 15 segundos.
+  setTimeout(function () { raiz.classList.remove('acesso-carregando') }, 15000)
 
   obterAuth().then(function (auth) {
     auth.onAuthStateChanged(function (user) {

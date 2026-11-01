@@ -45,6 +45,16 @@ function obterDb() {
   return firebaseDbPromise
 }
 
+// Limite de espera: sem banco criado ou sem internet, o Firestore fica tentando para sempre.
+function comTempo(promessa, ms) {
+  return new Promise(function (resolve, reject) {
+    const t = setTimeout(function () {
+      reject(Object.assign(new Error('O banco de dados não respondeu. Confira se o Firestore foi criado e se as regras foram publicadas no console do Firebase.'), { code: 'timeout' }))
+    }, ms || 12000)
+    promessa.then(function (v) { clearTimeout(t); resolve(v) }, function (e) { clearTimeout(t); reject(e) })
+  })
+}
+
 // Documento do cliente na coleção "clientes" (o nome do documento é o e-mail).
 function docCliente(db, email) {
   return db.collection('clientes').doc(String(email).trim().toLowerCase())

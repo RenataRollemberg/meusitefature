@@ -114,7 +114,7 @@
 
   function carregar() {
     painel.innerHTML = '<p class="muted">Carregando clientes…</p>'
-    return db.collection('clientes').get().then(function (snap) {
+    return comTempo(db.collection('clientes').get()).then(function (snap) {
       clientes = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()) })
       clientes.sort(function (a, b) { return (a.nome || a.id).localeCompare(b.nome || b.id, 'pt-BR') })
       telaLista()
@@ -281,7 +281,7 @@
       }
       const botao = e.target.querySelector('button[type="submit"]')
       botao.disabled = true
-      docCliente(db, email).set(dados, { merge: true })
+      comTempo(docCliente(db, email).set(dados, { merge: true }))
         .then(function () { toast('Cliente salvo.'); return carregar() })
         .catch(function (err) { botao.disabled = false; msg.innerHTML = erroHtml(err) })
     })
