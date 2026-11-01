@@ -7,10 +7,10 @@ const Planos = (function () {
   // link: endereço do plano de assinatura criado no Mercado Pago (ex.: https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=...).
   // Vazio = o botão leva para o WhatsApp da Remasol.
   const lista = [
-    { id: 'basico', nome: 'Básico', medicos: 1, convenios: 1, mensal: 70, link: '' },
-    { id: 'basico2', nome: 'Básico 2', medicos: 1, convenios: 3, mensal: 130, link: '' },
-    { id: 'clinica', nome: 'Clínica', medicos: 5, convenios: 10, mensal: 280, link: '' },
-    { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510, link: '' }
+    { id: 'basico', nome: 'Básico', medicos: 1, convenios: 1, mensal: 70, link: 'https://mpago.la/2FKd7JF' },
+    { id: 'basico2', nome: 'Básico 2', medicos: 1, convenios: 3, mensal: 130, link: 'https://mpago.la/2sxTZ5v' },
+    { id: 'clinica', nome: 'Clínica', medicos: 5, convenios: 10, mensal: 280, link: 'https://mpago.la/1s7KjV4' },
+    { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510, link: 'https://mpago.la/2Vpnysw' }
   ]
 
   const DIAS_GRATIS = 7
