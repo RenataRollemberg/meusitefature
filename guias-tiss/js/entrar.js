@@ -35,15 +35,26 @@
   function irParaApp() { location.href = 'index.html' }
   let usuarioSemConfirmar = null
 
+  // Depois de confirmar o e-mail, o Firebase mostra o botão "Continuar", que volta para esta página.
+  const voltaConfirmacao = { url: location.origin + location.pathname + '?confirmado=1' }
+  function enviarConfirmacao(user) { return user.sendEmailVerification(voltaConfirmacao) }
+
   function ocupado(form, sim) {
     form.querySelectorAll('button, input').forEach(function (el) { el.disabled = sim })
   }
 
   obterAuth().then(function (auth) {
     // Já está logado: vai direto para o app.
+    if (/[?&]confirmado=1/.test(location.search)) {
+      aviso('E-mail confirmado! Agora entre com o seu e-mail e a sua senha.', 'ok')
+    }
     const parar = auth.onAuthStateChanged(function (user) {
       parar()
-      if (user && user.emailVerified) irParaApp()
+      if (!user) return
+      // Atualiza a conta: a confirmação pode ter sido feita em outra aba.
+      user.reload().then(function () {
+        if (auth.currentUser && auth.currentUser.emailVerified) irParaApp()
+      }).catch(function () {})
     })
 
     $('#form-entrar').addEventListener('submit', function (e) {
@@ -79,7 +90,7 @@
       auth.createUserWithEmailAndPassword(email, senha)
         .then(function (cred) {
           return cred.user.updateProfile({ displayName: nome })
-            .then(function () { return cred.user.sendEmailVerification() })
+            .then(function () { return enviarConfirmacao(cred.user) })
             .then(function () { return auth.signOut() })
         })
         .then(function () {
@@ -96,7 +107,7 @@
       if (!user) return
       const botao = $('#reenviar')
       botao.disabled = true
-      user.sendEmailVerification()
+      enviarConfirmacao(user)
         .then(function () { aviso('Enviamos um novo link para ' + user.email + '. Pode levar alguns minutos.', 'ok') })
         .catch(function (err) { aviso(mensagemErro(err), 'erro') })
         .finally(function () { setTimeout(function () { botao.disabled = false }, 60000) })
