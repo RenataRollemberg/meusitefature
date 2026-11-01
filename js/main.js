@@ -31,6 +31,13 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  // Botões com mensagem própria de WhatsApp (ex.: página do Guias TISS)
+  document.querySelectorAll("[data-whatsapp]").forEach((botao) => {
+    botao.href = montarLinkWhatsApp(botao.dataset.whatsapp);
+    botao.target = "_blank";
+    botao.rel = "noopener";
+  });
+
   const linkEmail = document.getElementById("link-email");
   if (linkEmail) {
     linkEmail.href = `mailto:${CONFIG.email}`;

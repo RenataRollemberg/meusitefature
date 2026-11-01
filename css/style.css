@@ -255,6 +255,57 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
 .pagina-texto p, .pagina-texto li { color: var(--texto-suave); margin-bottom: 10px; }
 .pagina-texto ul { padding-left: 22px; }
 
+/* ---------- Página do Guias TISS (gerador-xml.html) ---------- */
+.produto-hero { padding-top: 40px; }
+.selos-lista { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.selos-lista li {
+  font-size: .82rem; font-weight: 600; color: var(--azul);
+  background: var(--branco); border: 1px solid var(--borda);
+  padding: 6px 12px; border-radius: 999px;
+}
+.vitrine {
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.vitrine__barra { display: flex; gap: 6px; padding: 10px 12px; background: #eef1f4; border-bottom: 1px solid var(--borda); }
+.vitrine__barra span { width: 10px; height: 10px; border-radius: 50%; background: #cfd6dc; }
+.vitrine img { width: 100%; height: auto; }
+.produto-bloco { margin-top: 70px; }
+.produto-titulo-claro { color: var(--branco); }
+.produto-centro { justify-content: center; }
+
+.planos { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 820px; margin: 40px auto 0; }
+.plano {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: var(--raio);
+  padding: 30px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.plano h3 { color: var(--branco); font-size: 1.2rem; }
+.plano__preco { font-family: var(--fonte-titulo); font-size: 2rem; font-weight: 700; color: var(--branco); }
+.plano ul { list-style: none; display: grid; gap: 8px; flex: 1; color: rgba(255,255,255,.88); }
+.plano li::before { content: "✓ "; color: #7fe0c3; font-weight: 700; }
+.plano .botao { align-self: flex-start; }
+.plano--destaque { background: var(--branco); border-color: var(--branco); }
+.plano--destaque h3, .plano--destaque .plano__preco { color: var(--azul-escuro); }
+.plano--destaque ul { color: var(--texto-suave); }
+.plano--destaque li::before { color: var(--verde); }
+
+.faq { max-width: 760px; }
+.faq .secao__titulo { margin-bottom: 30px; }
+.faq details { border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px 22px; margin-bottom: 12px; }
+.faq summary { cursor: pointer; font-weight: 600; color: var(--azul-escuro); }
+.faq details p { margin-top: 10px; color: var(--texto-suave); }
+
+/* Destaque do Guias TISS na página inicial */
+.aviso-digital--produto { border-color: var(--azul); margin-top: -34px; }
+.aviso-digital--produto:hover { background: #e8eef3; }
+.aviso-digital--produto .aviso-digital__seta { color: var(--azul); }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 900px) {
   .hero__grade, .bloco, .contato { grid-template-columns: 1fr; }
@@ -262,6 +313,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
   .cards { grid-template-columns: 1fr; }
   .passos { grid-template-columns: 1fr 1fr; }
   .hero__ilustracao { margin-top: 10px; }
+  .planos { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
