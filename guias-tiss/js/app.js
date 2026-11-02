@@ -360,7 +360,8 @@
       requestGuideNumber: '', password: '',
       hospitalIdType: 'codigo', hospitalId: '', hospitalName: '', hospitalCnes: '',
       executorCode: '', startDate: today, endDate: today, issueDate: today,
-      role: '00', procedures: [emptyItem()], team: []
+      role: '00', procedures: [emptyItem()], team: [],
+      expenses: [], sadtServiceType: '03', linkedSadtId: null
     }
   }
 
@@ -538,6 +539,8 @@
     const sadt = g.sadt
     if (isSadt && !sadt.expenses) sadt.expenses = []
     const hon = g.hon
+    if (isHon && !hon.expenses) hon.expenses = []
+    const linkedSadt = isHon && hon.linkedSadtId ? Repo.guide(hon.linkedSadtId) : null
     const patients = Repo.patients()
     const typeTitle = isSadt ? 'SP/SADT' : isHon ? 'de honorários individuais' : 'de consulta'
 
@@ -545,6 +548,10 @@
       '<div class="page-head"><div><h1>' + (editing ? 'Editar guia ' : 'Nova guia ') + typeTitle + '</h1>' +
       (editing ? '<p class="sub mono">Nº ' + esc(g.providerGuideNumber) + '</p>' : '') + '</div></div>'
 
+    const linkedNote = isSadt && g.linkedHonorId && Repo.guide(g.linkedHonorId)
+      ? '<div class="alert warn">Esta SP/SADT foi gerada com as despesas da <a href="#guia/' + g.linkedHonorId + '">guia de honorários nº ' +
+        esc(Repo.guide(g.linkedHonorId).providerGuideNumber) + '</a>. Altere as despesas por lá: ao salvar a guia de honorários, esta guia é refeita.</div>'
+      : ''
     const noOps = Repo.operators().length === 0
       ? '<div class="alert warn">Nenhum convênio cadastrado. <a href="#convenio/novo">Cadastre um convênio</a> antes de emitir guias.</div>'
       : ''
@@ -652,7 +659,16 @@
         '<div class="form-section">Equipe — outros profissionais</div>' +
         '<p class="hint" style="margin:0 0 10px">O profissional 1 é você (dados de <a href="#prestador">Prestador</a>). Inclua aqui o 1º auxiliar, 2º auxiliar, anestesista etc. Eles entram em todos os procedimentos da guia.</p>' +
         '<div class="items" id="team">' + (hon.team || []).map(memberHtml).join('') + '</div>' +
-        '<button type="button" class="btn small" id="add-member" style="margin-top:12px">+ Adicionar profissional</button>'
+        '<button type="button" class="btn small" id="add-member" style="margin-top:12px">+ Adicionar profissional</button>' +
+        '<div class="form-section">Outras despesas do especialista (materiais, medicamentos…)</div>' +
+        '<p class="hint" style="margin:0 0 10px">O Padrão TISS não aceita outras despesas dentro da guia de honorários. Ao salvar, as despesas abaixo viram uma ' +
+        '<strong>guia SP/SADT vinculada</strong> (com a guia de solicitação de internação como guia principal), que vai num lote de SP/SADT.' +
+        (linkedSadt ? ' Guia vinculada atual: <a href="#guia/' + linkedSadt.id + '" class="mono">SP/SADT nº ' + esc(linkedSadt.providerGuideNumber) + '</a>' +
+          (linkedSadt.loteId !== null ? ' (já em lote)' : '') + '.' : '') + '</p>' +
+        '<label class="field" style="max-width:360px;margin:0 0 12px">Tipo de atendimento da SP/SADT<select id="h-sadttype">' + options(TISS.SADT_SERVICE_TYPES, hon.sadtServiceType || '03') + '</select></label>' +
+        '<div class="items" id="expenses">' + hon.expenses.map(expenseHtml).join('') + '</div>' +
+        '<button type="button" class="btn small" id="add-expense" style="margin-top:12px">+ Adicionar despesa</button>' +
+        '<div class="total-line"><span class="muted">Total das outras despesas (vai na SP/SADT)</span><strong id="expenses-total"></strong></div>'
     } else {
       procs =
         '<div class="form-section">Procedimento</div><div class="grid">' +
@@ -672,7 +688,7 @@
       '<div class="form-section">Observação</div>' +
       '<label class="field">Observação / justificativa<textarea id="g-obs" maxlength="500">' + esc(g.observation) + '</textarea></label>'
 
-    app.innerHTML = head + noOps +
+    app.innerHTML = head + linkedNote + noOps +
       '<form class="card" id="guide-form" novalidate>' + ident + benef + solicit + atend + procs + obs +
       '<div id="form-msg"></div>' +
       '<div class="form-actions"><button class="btn solid" type="submit" data-print-after="1">Salvar e imprimir</button>' +
@@ -896,11 +912,15 @@
         const typed = $('[data-k="unitValue"]', el).value.trim() ? it.unitValue : null
         $('[data-price-hint]', el).textContent = priceHint(opId, it.tableCode, it.code, typed)
       })
+      const expenses = readExpenses()
       if (isHon) {
         $('#sadt-total').textContent = Fmt.money(Calc.honorTotal({ procedures: items }))
+        $$('[data-expense]').forEach(function (el, i) {
+          $('[data-expense-total]', el).textContent = Fmt.money(Calc.expenseTotal(expenses[i]))
+        })
+        $('#expenses-total').textContent = Fmt.money(Calc.expensesTotal({ expenses: expenses }))
         return
       }
-      const expenses = readExpenses()
       $$('[data-expense]').forEach(function (el, i) {
         $('[data-expense-total]', el).textContent = Fmt.money(Calc.expenseTotal(expenses[i]))
       })
@@ -934,6 +954,8 @@
     if (isSadt) {
       $('#r-same').addEventListener('change', function (e) { $('#r-fields').hidden = e.target.checked })
       $('#s-servicetype').addEventListener('change', function (e) { $('#consult-type-wrap').hidden = e.target.value !== '04' })
+    }
+    if (isSadt || isHon) {
       // Outras despesas: adicionar, remover, tabela sugerida pelo tipo e totais.
       const redrawExpenses = function (list) {
         $('#expenses').innerHTML = list.map(expenseHtml).join('')
@@ -1034,6 +1056,7 @@
           accidentIndication: val('#g-accident', g.accidentIndication),
           serviceRegime: isHon ? '03' : val('#g-regime', g.serviceRegime),
           observation: $('#g-obs').value.trim(),
+          linkedHonorId: g.linkedHonorId || null,
           sadt: null,
           procedure: null
         }
@@ -1059,8 +1082,17 @@
             issueDate: $('#h-issue').value,
             role: $('#h-role').value,
             procedures: items,
-            team: readTeam()
+            team: readTeam(),
+            expenses: readExpenses(),
+            sadtServiceType: $('#h-sadttype').value,
+            linkedSadtId: hon.linkedSadtId || null
           }
+          input.hon.expenses.forEach(function (x, i) {
+            if (!x.code) throw new Error('Despesa ' + (i + 1) + ': informe o código.')
+            if (!x.description) throw new Error('Despesa ' + (i + 1) + ': informe a descrição.')
+            if (!(x.quantity > 0)) throw new Error('Despesa ' + (i + 1) + ': quantidade inválida.')
+            if (Number.isNaN(x.unitValue) || Number.isNaN(x.factor)) throw new Error('Despesa ' + (i + 1) + ': valor ou fator inválido.')
+          })
           input.hon.team.forEach(function (m, i) {
             const n = 'Profissional ' + (i + 2)
             if (!m.name) throw new Error(n + ': informe o nome.')
@@ -1121,8 +1153,11 @@
             value: value
           }
         }
+        if (isHon) Repo.checkHonorExpenses(id)
         const saved = Repo.saveGuide(id, input)
-        toast('Guia ' + saved.providerGuideNumber + ' salva.')
+        const linkedSaved = isHon ? Repo.syncHonorExpenses(saved) : null
+        toast('Guia ' + saved.providerGuideNumber + ' salva.' +
+          (linkedSaved ? ' Despesas na SP/SADT nº ' + linkedSaved.providerGuideNumber + '.' : ''))
         if (andPrint) {
           try { Impressao.print(saved) } catch (err) { toast(err.message, true) }
         }

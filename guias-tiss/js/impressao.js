@@ -343,9 +343,21 @@ const Impressao = (function () {
       '<div class="num">2 - Nº ' + esc(guide.providerGuideNumber) + '</div></div>' +
       (isSadt
         ? sadtBody(guide, operator, settings, patient) + expensesAnnex(guide, operator, settings)
-        : isHon ? honorBody(guide, operator, settings, patient) : consultaBody(guide, operator, settings, patient)) +
+        : isHon ? honorBody(guide, operator, settings, patient) + linkedSadtPages(guide, operator, settings, patient)
+          : consultaBody(guide, operator, settings, patient)) +
       '</body></html>'
     )
+  }
+
+  // Guia de honorários com despesas: imprime junto a SP/SADT vinculada e o anexo dela.
+  function linkedSadtPages(guide, operator, settings, patient) {
+    const sadtGuide = guide.hon.linkedSadtId ? Repo.guide(guide.hon.linkedSadtId) : null
+    if (!sadtGuide || !sadtGuide.sadt) return ''
+    return '<div class="page-break"></div>' +
+      '<div class="top"><div><strong>' + esc(operator.name) + '</strong></div>' +
+      '<h1>Guia de Serviço Profissional / Serviço Auxiliar de Diagnóstico e Terapia - SP/SADT</h1>' +
+      '<div class="num">2 - Nº ' + esc(sadtGuide.providerGuideNumber) + '</div></div>' +
+      sadtBody(sadtGuide, operator, settings, patient) + expensesAnnex(sadtGuide, operator, settings)
   }
 
   // Abre a guia numa janela própria e chama a impressão do navegador.
