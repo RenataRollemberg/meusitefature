@@ -543,7 +543,7 @@ const XmlTiss = (function () {
         push('complete conselho, número, UF e CBO-S do profissional solicitante.')
     }
 
-    if (sadt.procedures.length === 0) push('inclua ao menos um procedimento.')
+    if (sadt.procedures.length === 0 && !(sadt.expenses || []).length) push('inclua ao menos um procedimento ou uma despesa.')
     sadt.procedures.forEach(function (p, i) {
       const item = 'item ' + (i + 1)
       if (!p.code.trim()) push(item + ': código do procedimento é obrigatório.')

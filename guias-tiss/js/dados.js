@@ -460,8 +460,9 @@ const Repo = {
     data.providerGuideNumber = number
     data.cardNumber = data.cardNumber.trim()
     if (data.guideType === 'sadt') {
-      if (!data.sadt || data.sadt.procedures.length === 0) {
-        throw new Error('Inclua ao menos um procedimento na guia SP/SADT.')
+      // A SP/SADT pode ter só outras despesas (ex.: materiais do especialista numa internação).
+      if (!data.sadt || (data.sadt.procedures.length === 0 && !(data.sadt.expenses || []).length)) {
+        throw new Error('Inclua ao menos um procedimento ou uma despesa na guia SP/SADT.')
       }
       data.sadt.procedures = data.sadt.procedures.map(function (p) {
         return Object.assign({}, p, {
@@ -478,7 +479,7 @@ const Repo = {
           factor: Calc.round2(e.factor)
         })
       })
-      const first = data.sadt.procedures[0]
+      const first = data.sadt.procedures[0] || data.sadt.expenses[0]
       // Resumo do primeiro item, para listagens (igual à versão desktop).
       data.procedure = {
         tableCode: first.tableCode,
@@ -524,8 +525,81 @@ const Repo = {
   deleteGuide: function (id) {
     const g = Repo.guide(id)
     if (g && g.loteId !== null) throw new Error('A guia faz parte de um lote. Exclua o lote antes.')
-    Db.state.guides = Db.state.guides.filter(function (x) { return x.id !== id })
+    // Guia de honorários leva junto a SP/SADT das despesas dela (se ainda não estiver em lote).
+    const linked = g && g.hon && g.hon.linkedSadtId ? Repo.guide(g.hon.linkedSadtId) : null
+    if (linked && linked.loteId !== null) {
+      throw new Error('A SP/SADT das despesas desta guia (nº ' + linked.providerGuideNumber + ') já está em lote. Exclua o lote antes.')
+    }
+    // SP/SADT de despesas: a guia de honorários deixa de apontar para ela.
+    if (g && g.linkedHonorId) {
+      const h = Repo.guide(g.linkedHonorId)
+      if (h && h.hon) h.hon.linkedSadtId = null
+    }
+    Db.state.guides = Db.state.guides.filter(function (x) { return x.id !== id && !(linked && x.id === linked.id) })
     Db.save()
+  },
+
+  // Despesas (materiais, medicamentos…) lançadas na guia de honorários. O Padrão TISS não aceita
+  // outras despesas dentro da guia de honorários; elas vão numa SP/SADT vinculada, com a guia de
+  // solicitação de internação como guia principal. Esta função cria, atualiza ou apaga essa SP/SADT.
+  checkHonorExpenses: function (guideId) {
+    const g = guideId ? Repo.guide(guideId) : null
+    const linked = g && g.hon && g.hon.linkedSadtId ? Repo.guide(g.hon.linkedSadtId) : null
+    if (linked && linked.loteId !== null) {
+      throw new Error('A SP/SADT com as despesas desta guia (nº ' + linked.providerGuideNumber + ') já está no lote ' +
+        (Repo.lote(linked.loteId) || {}).number + '. Exclua o lote para alterar a guia de honorários.')
+    }
+  },
+  syncHonorExpenses: function (guide) {
+    const hon = guide.hon
+    const expenses = hon.expenses || []
+    const linked = hon.linkedSadtId ? Repo.guide(hon.linkedSadtId) : null
+    if (!expenses.length) {
+      if (linked && linked.loteId === null) Db.state.guides = Db.state.guides.filter(function (x) { return x.id !== linked.id })
+      hon.linkedSadtId = null
+      Db.save()
+      return null
+    }
+    const input = {
+      guideType: 'sadt',
+      operatorId: guide.operatorId,
+      patientId: guide.patientId,
+      providerGuideNumber: linked ? linked.providerGuideNumber : Repo.nextProviderGuideNumber(),
+      operatorGuideNumber: guide.operatorGuideNumber,
+      cardNumber: guide.cardNumber,
+      newborn: guide.newborn,
+      serviceDate: hon.startDate,
+      consultationType: '1',
+      accidentIndication: '9',
+      serviceRegime: '03',
+      observation: ('Materiais/medicamentos referentes a guia de honorarios n ' + guide.providerGuideNumber +
+        (guide.observation ? '. ' + guide.observation : '')).slice(0, 500),
+      linkedHonorId: guide.id,
+      sadt: {
+        mainGuideNumber: hon.requestGuideNumber,
+        authorizationDate: hon.password ? hon.startDate : '',
+        password: hon.password,
+        passwordValidity: '',
+        requester: {
+          sameAsExecutor: true, contractorIdType: 'codigo', contractorId: '', contractorName: '',
+          professionalName: '', councilCode: '06', councilNumber: '', councilUf: '33', cbos: ''
+        },
+        requestDate: hon.startDate,
+        character: '1',
+        clinicalIndication: '',
+        specialCoverage: '',
+        serviceType: hon.sadtServiceType || '03',
+        identifyExecutor: true,
+        executorRole: '',
+        procedures: [],
+        expenses: expenses
+      },
+      procedure: { tableCode: '', code: '', description: '', value: 0 }
+    }
+    const saved = Repo.saveGuide(linked ? linked.id : null, input)
+    hon.linkedSadtId = saved.id
+    Db.save()
+    return saved
   },
 
   // ----- Lotes
