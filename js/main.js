@@ -44,6 +44,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!link.dataset.email) link.textContent = CONFIG.email;
   });
 
+  // Dados de CONFIG nas páginas (ex.: responsável nos Termos de uso).
+  // [data-config="a.b"] recebe o valor; [data-se="a.b"] some quando o valor está vazio.
+  const lerConfig = (caminho) => caminho.split(".").reduce((o, k) => (o ? o[k] : ""), CONFIG) || "";
+  document.querySelectorAll("[data-config]").forEach((el) => {
+    const valor = lerConfig(el.dataset.config);
+    if (valor) el.textContent = valor;
+  });
+  document.querySelectorAll("[data-se]").forEach((el) => {
+    el.hidden = !lerConfig(el.dataset.se);
+  });
+
   // Formulário de contato → abre o WhatsApp com a mensagem pronta
   const formContato = document.getElementById("form-contato");
   if (formContato) {

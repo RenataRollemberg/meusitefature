@@ -108,3 +108,7 @@ html.acesso-carregando .layout { visibility: hidden; }
   .conta-faixa > div, .conta-faixa br { display: none; }
   .conta-teste { margin-top: 0; }
 }
+
+/* Aceite dos termos nas janelas de assinatura */
+.assinatura-aceite { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 4px; color: var(--ink); font-size: .95rem; line-height: 1.4; }
+.assinatura-aceite input { width: 18px; height: 18px; min-height: 0; margin-top: 2px; accent-color: var(--blue); flex: none; }

@@ -6,7 +6,8 @@ rules_version = '2';
 //
 // Coleção "clientes": um documento por cliente, com o e-mail como nome do documento.
 // - Só a Remasol (e-mails de admin, confirmados) cadastra plano, situação e o valor do Faturista.
-// - O médico lê apenas o próprio cadastro e só pode confirmar que viu a assinatura (aceitoEm).
+// - O médico lê apenas o próprio cadastro e só pode confirmar a assinatura (aceitoEm) e o aceite dos termos
+//   (termosVersao, termosAceitoEm, com a hora do servidor).
 // - Quem cria a conta sozinho ganha um cadastro em período grátis, sem plano e sem Faturista.
 
 service cloud.firestore {
@@ -38,17 +39,19 @@ service cloud.firestore {
 
       allow create: if admin() || (
         dono(clienteId)
-        && request.resource.data.keys().hasOnly(['nome', 'email', 'status', 'origem', 'criadoEm'])
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'status', 'origem', 'criadoEm', 'termosVersao', 'termosAceitoEm'])
         && request.resource.data.email == clienteId
         && request.resource.data.status == 'teste'
         && request.resource.data.origem == 'site'
         && request.resource.data.criadoEm == request.time
+        && (!('termosAceitoEm' in request.resource.data) || request.resource.data.termosAceitoEm == request.time)
       );
 
       allow update: if admin() || (
         dono(clienteId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceitoEm'])
-        && request.resource.data.aceitoEm == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceitoEm', 'termosVersao', 'termosAceitoEm'])
+        && (!('aceitoEm' in request.resource.data.diff(resource.data).affectedKeys()) || request.resource.data.aceitoEm == request.time)
+        && (!('termosAceitoEm' in request.resource.data.diff(resource.data).affectedKeys()) || request.resource.data.termosAceitoEm == request.time)
       );
 
       allow delete: if admin();

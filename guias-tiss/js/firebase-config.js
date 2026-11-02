@@ -24,6 +24,9 @@ const FIREBASE_CONFIG = {
   appId: "1:451334655357:web:82dbc02290eebfcaf01014"
 }
 
+// Versão dos Termos de uso (termos.html). Ao subir a versão, cada cliente aceita de novo na próxima entrada.
+const TERMOS_VERSAO = '1.0'
+
 // Dias de teste grátis contados a partir da criação da conta.
 const DIAS_TESTE = 7
 

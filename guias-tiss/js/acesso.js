@@ -155,6 +155,43 @@
     tela.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
   }
 
+  // Caixa de aceite dos Termos de uso e da Política de privacidade.
+  function aceiteHtml() {
+    return '<label class="assinatura-aceite"><input type="checkbox" data-aceite> <span>Li e aceito os ' +
+      '<a href="../termos.html" target="_blank" rel="noopener">Termos de uso</a> e a ' +
+      '<a href="../privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</span></label>'
+  }
+
+  function dadosAceite() {
+    return { termosVersao: TERMOS_VERSAO, termosAceitoEm: firebase.firestore.FieldValue.serverTimestamp() }
+  }
+
+  // Termos novos (ou cliente antigo que ainda não aceitou): pede o aceite antes de continuar.
+  function novoAceite(db, auth, user) {
+    return new Promise(function (resolve) {
+      const tela = janela(
+        '<h2>' + (cliente.termosVersao ? 'Atualizamos os termos de uso' : 'Termos de uso') + '</h2>' +
+        '<p>Para continuar usando o Guias TISS, leia e aceite os termos. Eles explicam o que a plataforma faz, as responsabilidades de cada lado e como cuidamos dos dados.</p>' +
+        aceiteHtml() +
+        '<p class="assinatura-erro" hidden></p>' +
+        '<button type="button" class="btn solid" data-ok>Aceitar e continuar</button>' +
+        '<p><button type="button" class="entrar__link" data-sair>Sair da conta</button></p>', true)
+      tela.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
+      tela.querySelector('[data-ok]').addEventListener('click', function (e) {
+        const p = tela.querySelector('.assinatura-erro')
+        if (!tela.querySelector('[data-aceite]').checked) {
+          p.hidden = false
+          p.textContent = 'Para continuar, marque que leu e aceita os termos.'
+          return
+        }
+        e.target.disabled = true
+        docCliente(db, user.email).update(dadosAceite())
+          .then(function () { cliente.termosVersao = TERMOS_VERSAO; tela.remove(); resolve() })
+          .catch(function (err) { e.target.disabled = false; p.hidden = false; p.textContent = mensagemErro(err) })
+      })
+    })
+  }
+
   // Cliente cadastrado pela Remasol, entrando pela primeira vez: mostra o que foi combinado.
   function boasVindas(db, user) {
     return new Promise(function (resolve) {
@@ -165,15 +202,21 @@
         (Planos.linkPagamento(cliente)
           ? '<p>Para ativar a cobrança mensal, use o botão <strong>Pagar com Mercado Pago</strong> em "Minha assinatura", na barra lateral.</p>'
           : '') +
+        aceiteHtml() +
         '<p class="assinatura-erro" hidden></p>' +
         '<button type="button" class="btn solid" data-ok>Confirmar e começar</button>', true)
       tela.querySelector('[data-ok]').addEventListener('click', function (e) {
+        const p = tela.querySelector('.assinatura-erro')
+        if (!tela.querySelector('[data-aceite]').checked) {
+          p.hidden = false
+          p.textContent = 'Para começar, marque que leu e aceita os termos.'
+          return
+        }
         e.target.disabled = true
-        docCliente(db, user.email).update({ aceitoEm: firebase.firestore.FieldValue.serverTimestamp() })
-          .then(function () { tela.remove(); resolve() })
+        docCliente(db, user.email).update(Object.assign({ aceitoEm: firebase.firestore.FieldValue.serverTimestamp() }, dadosAceite()))
+          .then(function () { cliente.termosVersao = TERMOS_VERSAO; tela.remove(); resolve() })
           .catch(function (err) {
             e.target.disabled = false
-            const p = tela.querySelector('.assinatura-erro')
             p.hidden = false
             p.textContent = mensagemErro(err)
           })
@@ -197,7 +240,10 @@
           email: user.email.toLowerCase(),
           status: 'teste',
           origem: 'site',
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          // aceite feito na caixa "Li e aceito" ao criar a conta (entrar.html)
+          termosVersao: TERMOS_VERSAO,
+          termosAceitoEm: firebase.firestore.FieldValue.serverTimestamp()
         }
         return comTempo(ref.set(novo), 8000).then(function () { return { db: db, dados: novo } })
       })
@@ -216,8 +262,14 @@
       carregarCliente(user).then(function (r) {
         cliente = r.dados
         const primeiraVez = cliente && cliente.origem !== 'site' && !cliente.aceitoEm
-        const passo = primeiraVez && r.db ? (raiz.classList.remove('acesso-carregando'), boasVindas(r.db, user)) : Promise.resolve()
-        return passo
+        if (primeiraVez && r.db) {
+          raiz.classList.remove('acesso-carregando')
+          return boasVindas(r.db, user)
+        }
+        if (cliente && r.db && cliente.termosVersao !== TERMOS_VERSAO) {
+          raiz.classList.remove('acesso-carregando')
+          return novoAceite(r.db, auth, user)
+        }
       }).then(function () {
         raiz.classList.remove('acesso-carregando')
         const dias = diasRestantes(user)
