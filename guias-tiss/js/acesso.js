@@ -187,7 +187,11 @@
         e.target.disabled = true
         docCliente(db, user.email).update(dadosAceite())
           .then(function () { cliente.termosVersao = TERMOS_VERSAO; tela.remove(); resolve() })
-          .catch(function (err) { e.target.disabled = false; p.hidden = false; p.textContent = mensagemErro(err) })
+          .catch(function (err) {
+            // Não trava o cliente por um problema de configuração: segue e pede o aceite de novo na próxima entrada.
+            console.warn('Guias TISS: aceite dos termos não foi gravado —', err && (err.code || err.message))
+            tela.remove(); resolve()
+          })
       })
     })
   }
@@ -216,9 +220,8 @@
         docCliente(db, user.email).update(Object.assign({ aceitoEm: firebase.firestore.FieldValue.serverTimestamp() }, dadosAceite()))
           .then(function () { cliente.termosVersao = TERMOS_VERSAO; tela.remove(); resolve() })
           .catch(function (err) {
-            e.target.disabled = false
-            p.hidden = false
-            p.textContent = mensagemErro(err)
+            console.warn('Guias TISS: confirmação não foi gravada —', err && (err.code || err.message))
+            tela.remove(); resolve()
           })
       })
     })
