@@ -360,8 +360,39 @@
       requestGuideNumber: '', password: '',
       hospitalIdType: 'codigo', hospitalId: '', hospitalName: '', hospitalCnes: '',
       executorCode: '', startDate: today, endDate: today, issueDate: today,
-      role: '00', procedures: [emptyItem()]
+      role: '00', procedures: [emptyItem()], team: []
     }
+  }
+
+  // Outro profissional da equipe na guia de honorários (1º auxiliar, 2º auxiliar, anestesista…).
+  function emptyMember(role) {
+    return { role: role || '01', idType: 'cpf', id: '', name: '', councilCode: '06', councilNumber: '', councilUf: Db.state.settings.councilUf || '33', cbos: '' }
+  }
+
+  function memberHtml(m, i) {
+    return '<div class="item" data-member="' + i + '">' +
+      '<div class="item-head"><strong>PROFISSIONAL ' + (i + 2) + '</strong>' +
+      '<button type="button" class="link-btn danger" data-remove-member="' + i + '">Remover</button></div>' +
+      '<div class="grid">' +
+      '<label class="field c4">Grau de participação <span class="req">*</span><select data-m="role">' + options(TISS.HONOR_PARTICIPATION, m.role) + '</select></label>' +
+      '<label class="field c8">Nome do profissional <span class="req">*</span><input data-m="name" maxlength="70" value="' + esc(m.name) + '"></label>' +
+      '<label class="field c3">Identificação<select data-m="idType">' + options([{ value: 'cpf', label: 'CPF' }, { value: 'codigo', label: 'Código no convênio' }], m.idType) + '</select></label>' +
+      '<label class="field c3">CPF / código <span class="req">*</span><input class="code" data-m="id" maxlength="14" value="' + esc(m.id) + '"></label>' +
+      '<label class="field c2">Conselho<select data-m="councilCode">' + options(TISS.COUNCILS, m.councilCode) + '</select></label>' +
+      '<label class="field c2">Número <span class="req">*</span><input class="code" data-m="councilNumber" maxlength="15" value="' + esc(m.councilNumber) + '"></label>' +
+      '<label class="field c2">UF<select data-m="councilUf">' + options(TISS.UFS, m.councilUf) + '</select></label>' +
+      '<label class="field c12">CBO-S <span class="req">*</span><select data-m="cbos">' + options(TISS.CBOS.map(function (c) { return { value: c.value, label: c.value + ' — ' + c.label } }), m.cbos, 'Selecione…') + '</select></label>' +
+      '</div></div>'
+  }
+
+  function readTeam() {
+    return $$('[data-member]').map(function (el) {
+      const get = function (k) { return $('[data-m="' + k + '"]', el).value }
+      return {
+        role: get('role'), idType: get('idType'), id: get('id').trim(), name: get('name').trim(),
+        councilCode: get('councilCode'), councilNumber: get('councilNumber').trim(), councilUf: get('councilUf'), cbos: get('cbos')
+      }
+    })
   }
 
   function newGuide(type) {
@@ -614,10 +645,14 @@
     } else if (isHon) {
       procs =
         '<div class="form-section">Procedimentos realizados</div>' +
-        '<label class="field" style="max-width:320px;margin:0 0 12px">Grau de participação (padrão da guia)<select id="h-role">' + options(TISS.HONOR_PARTICIPATION, hon.role) + '</select></label>' +
+        '<label class="field" style="max-width:320px;margin:0 0 12px">Seu grau de participação (padrão da guia)<select id="h-role">' + options(TISS.HONOR_PARTICIPATION, hon.role) + '</select></label>' +
         '<div class="items" id="items">' + hon.procedures.map(itemHtml).join('') + '</div>' +
         '<button type="button" class="btn small" id="add-item" style="margin-top:12px">+ Adicionar procedimento</button>' +
-        '<div class="total-line"><span class="muted">Total de honorários</span><strong id="sadt-total"></strong></div>'
+        '<div class="total-line"><span class="muted">Total de honorários</span><strong id="sadt-total"></strong></div>' +
+        '<div class="form-section">Equipe — outros profissionais</div>' +
+        '<p class="hint" style="margin:0 0 10px">O profissional 1 é você (dados de <a href="#prestador">Prestador</a>). Inclua aqui o 1º auxiliar, 2º auxiliar, anestesista etc. Eles entram em todos os procedimentos da guia.</p>' +
+        '<div class="items" id="team">' + (hon.team || []).map(memberHtml).join('') + '</div>' +
+        '<button type="button" class="btn small" id="add-member" style="margin-top:12px">+ Adicionar profissional</button>'
     } else {
       procs =
         '<div class="form-section">Procedimento</div><div class="grid">' +
@@ -925,6 +960,26 @@
       })
       $('#expenses').addEventListener('input', updateTotals)
     }
+    if (isHon) {
+      // Equipe: o próximo profissional sugere o grau seguinte (1º auxiliar → 2º auxiliar…).
+      const redrawTeam = function (list) { $('#team').innerHTML = list.map(memberHtml).join('') }
+      $('#add-member').addEventListener('click', function () {
+        const list = readTeam()
+        const last = list.length ? Number(list[list.length - 1].role) : 0
+        const next = last >= 1 && last < 4 ? String(last + 1).padStart(2, '0') : '01'
+        list.push(emptyMember(list.length ? next : '01'))
+        redrawTeam(list)
+        const fields = $$('[data-member]')
+        $('[data-m="name"]', fields[fields.length - 1]).focus()
+      })
+      $('#team').addEventListener('click', function (e) {
+        const rm = e.target.closest('[data-remove-member]')
+        if (!rm) return
+        const list = readTeam()
+        list.splice(Number(rm.dataset.removeMember), 1)
+        redrawTeam(list)
+      })
+    }
     if (hasItems) {
       $('#add-item').addEventListener('click', function () {
         const items = readItems()
@@ -1003,8 +1058,17 @@
             endDate: $('#h-end').value,
             issueDate: $('#h-issue').value,
             role: $('#h-role').value,
-            procedures: items
+            procedures: items,
+            team: readTeam()
           }
+          input.hon.team.forEach(function (m, i) {
+            const n = 'Profissional ' + (i + 2)
+            if (!m.name) throw new Error(n + ': informe o nome.')
+            if (!m.id) throw new Error(n + ': informe o CPF ou o código no convênio.')
+            if (m.idType === 'cpf' && m.id.replace(/\D/g, '').length !== 11) throw new Error(n + ': o CPF deve ter 11 dígitos.')
+            if (!m.councilNumber) throw new Error(n + ': informe o número no conselho.')
+            if (!m.cbos) throw new Error(n + ': escolha o CBO-S.')
+          })
           input.procedure = { tableCode: '', code: '', description: '', value: 0 }
         } else if (isSadt) {
           const items = readItems()
