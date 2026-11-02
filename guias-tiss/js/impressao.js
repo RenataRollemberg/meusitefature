@@ -55,6 +55,7 @@ const Impressao = (function () {
     'table.items th { font-size: 7.5px; font-weight: 400; color: #333; text-align: left; border: 1px solid #555; padding: 2px 3px; }' +
     'table.items td { font-size: 10px; font-weight: 600; border: 1px solid #555; padding: 3px; }' +
     'table.items td.n { text-align: right; white-space: nowrap; }' +
+    '.page-break { break-before: page; page-break-before: always; }' +
     '</style>'
 
   function contractorName(settings) {
@@ -112,6 +113,8 @@ const Impressao = (function () {
       ? { name: settings.professionalName, council: settings.councilCode, number: settings.councilNumber, uf: settings.councilUf, cbos: settings.cbos }
       : { name: r.professionalName, council: r.councilCode, number: r.councilNumber, uf: r.councilUf, cbos: r.cbos }
     const total = Calc.sadtGuideTotal(sadt)
+    const byType = Calc.expenseTotalsByType(sadt)
+    const part = function (code) { return byType[code] ? money(byType[code]) : '' }
     const rows = sadt.procedures
       .map(function (p, i) {
         return (
@@ -187,12 +190,12 @@ const Impressao = (function () {
         : '') +
       row(field(58, 'Observação / Justificativa', guide.observation)) +
       row(
-        field(59, 'Total de Procedimentos (R$)', money(total)),
-        field(60, 'Total de Taxas e Aluguéis (R$)', ''),
-        field(61, 'Total de Materiais (R$)', ''),
-        field(62, 'Total de OPME (R$)', ''),
-        field(63, 'Total de Medicamentos (R$)', ''),
-        field(64, 'Total de Gases Medicinais (R$)', ''),
+        field(59, 'Total de Procedimentos (R$)', money(Calc.sadtProceduresTotal(sadt))),
+        field(60, 'Total de Taxas e Aluguéis (R$)', part('07')),
+        field(61, 'Total de Materiais (R$)', part('03')),
+        field(62, 'Total de OPME (R$)', part('08')),
+        field(63, 'Total de Medicamentos (R$)', part('02')),
+        field(64, 'Total de Gases Medicinais (R$)', part('01')),
         field(65, 'Total Geral (R$)', money(total))
       ) +
       '<div class="sign"><div>20 - Assinatura do Profissional Solicitante</div>' +
@@ -202,20 +205,144 @@ const Impressao = (function () {
     )
   }
 
+  // Anexo de Outras Despesas (materiais, medicamentos, taxas…) da SP/SADT.
+  function expensesAnnex(guide, operator, settings) {
+    const sadt = guide.sadt
+    const list = sadt.expenses || []
+    if (!list.length) return ''
+    const unit = function (code) {
+      const u = TISS.EXPENSE_UNITS.find(function (x) { return x.value === code })
+      return u ? u.label.replace(/^\d+ — /, '') : code
+    }
+    const rows = list.map(function (e, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + esc(e.type) + '</td>' +
+        '<td>' + esc(Fmt.date(e.date || guide.serviceDate)) + '</td>' +
+        '<td>' + esc(e.tableCode) + '</td><td>' + esc(e.code) + '</td>' +
+        '<td class="n">' + String(e.quantity).replace('.', ',') + '</td><td>' + esc(unit(e.unit)) + '</td>' +
+        '<td class="n">' + e.factor.toFixed(2).replace('.', ',') + '</td>' +
+        '<td class="n">' + money(e.unitValue) + '</td><td class="n">' + money(Calc.expenseTotal(e)) + '</td>' +
+        '<td>' + esc(e.anvisa) + '</td><td>' + esc(e.manufacturerRef) + '</td><td>' + esc(e.operatingPermit) + '</td></tr>' +
+        '<tr><td></td><td colspan="12">Descrição: ' + esc(e.description) + '</td></tr>'
+    }).join('')
+    const byType = Calc.expenseTotalsByType(sadt)
+    const part = function (code) { return byType[code] ? money(byType[code]) : '' }
+    return '<div class="page-break"></div>' +
+      '<div class="top"><div><strong>' + esc(operator.name) + '</strong></div>' +
+      '<h1>Anexo de Outras Despesas (para Guia SP/SADT)</h1>' +
+      '<div class="num">Guia referenciada: ' + esc(guide.providerGuideNumber) + '</div></div>' +
+      row(field(1, 'Registro ANS', operator.ansRegistry), field(2, 'Número da Guia Referenciada', guide.providerGuideNumber, 2)) +
+      section('Dados do Contratado Executante') +
+      row(
+        field(3, 'Código na Operadora', contractorCode(settings, operator), 2),
+        field(4, 'Nome do Contratado', contractorName(settings), 5),
+        field(5, 'Código CNES', settings.cnes || '9999999')
+      ) +
+      section('Despesas Realizadas') +
+      '<table class="items"><thead><tr>' +
+      '<th>6 - Seq</th><th>7 - CD</th><th>8 - Data</th><th>11 - Tabela</th><th>12 - Código do Item</th>' +
+      '<th>13 - Qtde</th><th>14 - Unidade de Medida</th><th>15 - Fator Red./Acresc.</th>' +
+      '<th>16 - Valor Unitário (R$)</th><th>17 - Valor Total (R$)</th>' +
+      '<th>18 - Registro ANVISA</th><th>19 - Ref. do Fabricante</th><th>20 - Nº Autorização de Funcionamento</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<p style="font-size:8px;margin:3px 0">CD: 01 Gases medicinais · 02 Medicamentos · 03 Materiais · 05 Diárias · 07 Taxas e aluguéis · 08 OPME</p>' +
+      row(
+        field(22, 'Total de Gases Medicinais (R$)', part('01')),
+        field(23, 'Total de Medicamentos (R$)', part('02')),
+        field(24, 'Total de Materiais (R$)', part('03')),
+        field(25, 'Total de OPME (R$)', part('08')),
+        field(26, 'Total de Taxas e Aluguéis (R$)', part('07')),
+        field(27, 'Total de Diárias (R$)', part('05')),
+        field(28, 'Total Geral (R$)', money(Calc.expensesTotal(sadt)))
+      )
+  }
+
+  // Guia de Honorários (honorário individual numa internação).
+  function honorBody(guide, operator, settings, patient) {
+    const hon = guide.hon
+    const roleLabel = function (code) { return TISS.label(TISS.HONOR_PARTICIPATION, code) }
+    const rows = hon.procedures.map(function (p, i) {
+      return '<tr><td>' + (i + 1) + '</td>' +
+        '<td>' + esc(Fmt.date(p.date || hon.startDate)) + '</td>' +
+        '<td>' + esc(p.startTime) + '</td><td>' + esc(p.endTime) + '</td>' +
+        '<td>' + esc(p.tableCode) + '</td><td>' + esc(p.code) + '</td><td>' + esc(p.description) + '</td>' +
+        '<td class="n">' + p.quantity + '</td><td>' + esc(p.accessRoute) + '</td><td>' + esc(p.technique) + '</td>' +
+        '<td class="n">' + p.factor.toFixed(2).replace('.', ',') + '</td>' +
+        '<td class="n">' + money(p.unitValue) + '</td><td class="n">' + money(Calc.sadtItemTotal(p)) + '</td>' +
+        '<td>' + esc(roleLabel(p.role || hon.role)) + '</td></tr>'
+    }).join('')
+    const profCode = operator.contractorIdType === 'codigo' && operator.providerCode ? operator.providerCode : settings.contractorCpf
+    return (
+      row(
+        field(1, 'Registro ANS', operator.ansRegistry),
+        field(3, 'Nº da Guia de Solicitação de Internação', hon.requestGuideNumber, 2),
+        field(4, 'Senha', hon.password),
+        field(5, 'Número da Guia Atribuído pela Operadora', guide.operatorGuideNumber, 2)
+      ) +
+      section('Dados do Beneficiário') +
+      row(
+        field(6, 'Número da Carteira', guide.cardNumber, 2),
+        field(7, 'Nome', patient.name, 5),
+        field(8, 'Atendimento a RN', guide.newborn ? 'S' : 'N')
+      ) +
+      section('Dados do Contratado (onde foi executado o procedimento)') +
+      row(
+        field(9, 'Código na Operadora / CNPJ', hon.hospitalId, 2),
+        field(10, 'Nome do Hospital / Local', hon.hospitalName, 5),
+        field(11, 'Código CNES', hon.hospitalCnes || '9999999')
+      ) +
+      section('Dados do Contratado Executante') +
+      row(
+        field(12, 'Código na Operadora', hon.executorCode || operator.providerCode, 2),
+        field(13, 'Nome do Contratado', contractorName(settings), 5),
+        field(14, 'Código CNES', settings.cnes || '9999999')
+      ) +
+      section('Dados da Internação') +
+      row(
+        field(15, 'Data do Início do Faturamento', Fmt.date(hon.startDate)),
+        field(16, 'Data do Fim do Faturamento', Fmt.date(hon.endDate || hon.startDate))
+      ) +
+      section('Procedimentos Realizados') +
+      '<table class="items"><thead><tr>' +
+      '<th>Seq</th><th>17 - Data</th><th>18 - Hora Inicial</th><th>19 - Hora Final</th>' +
+      '<th>20 - Tabela</th><th>21 - Código do Procedimento</th><th>22 - Descrição</th>' +
+      '<th>23 - Qtde</th><th>24 - Via</th><th>25 - Téc.</th><th>26 - Fator Red./Acresc.</th>' +
+      '<th>27 - Valor Unitário (R$)</th><th>28 - Valor Total (R$)</th><th>30 - Grau de Participação</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      section('Identificação do(s) Profissional(is)') +
+      row(
+        field(31, 'Código na Operadora / CPF', profCode, 2),
+        field(32, 'Nome do Profissional', settings.professionalName, 4),
+        field(33, 'Conselho Profissional', council(settings.councilCode)),
+        field(34, 'Número no Conselho', settings.councilNumber),
+        field(35, 'UF', uf(settings.councilUf)),
+        field(36, 'Código CBO', settings.cbos)
+      ) +
+      row(field(37, 'Observação / Justificativa', guide.observation)) +
+      row(
+        field(38, 'Valor Total dos Honorários (R$)', money(Calc.honorTotal(hon))),
+        field(39, 'Data de Emissão', Fmt.date(hon.issueDate || guide.serviceDate))
+      ) +
+      '<div class="sign"><div>40 - Assinatura do Profissional Executante</div></div>'
+    )
+  }
+
   function guideHtml(guide) {
     const operator = Repo.operator(guide.operatorId)
     const patient = Repo.patient(guide.patientId) || { name: '' }
     const settings = Db.state.settings
     const isSadt = guide.guideType === 'sadt' && guide.sadt
+    const isHon = guide.guideType === 'honorarios' && guide.hon
     return (
       '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Guia ' +
       esc(guide.providerGuideNumber) + '</title>' + STYLES + '</head><body>' +
       '<div class="top"><div><strong>' + esc(operator.name) + '</strong></div>' +
       '<h1>' + (isSadt
         ? 'Guia de Serviço Profissional / Serviço Auxiliar de Diagnóstico e Terapia - SP/SADT'
-        : 'Guia de Consulta') + '</h1>' +
+        : isHon ? 'Guia de Honorários' : 'Guia de Consulta') + '</h1>' +
       '<div class="num">2 - Nº ' + esc(guide.providerGuideNumber) + '</div></div>' +
-      (isSadt ? sadtBody(guide, operator, settings, patient) : consultaBody(guide, operator, settings, patient)) +
+      (isSadt
+        ? sadtBody(guide, operator, settings, patient) + expensesAnnex(guide, operator, settings)
+        : isHon ? honorBody(guide, operator, settings, patient) : consultaBody(guide, operator, settings, patient)) +
       '</body></html>'
     )
   }
