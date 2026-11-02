@@ -52,11 +52,37 @@ const Calc = {
   sadtItemTotal: function (item) {
     return Calc.round2(item.quantity * item.unitValue * (item.factor || 0))
   },
-  sadtGuideTotal: function (sadt) {
+  // Só os procedimentos da SP/SADT (campo 59 / valorProcedimentos).
+  sadtProceduresTotal: function (sadt) {
     return Calc.round2(sadt.procedures.reduce(function (s, p) { return s + Calc.sadtItemTotal(p) }, 0))
   },
+  // Outra despesa (material, medicamento…): quantidade (até 4 casas) × valor unitário × fator.
+  expenseTotal: function (e) {
+    return Calc.round2(e.quantity * e.unitValue * (e.factor || 0))
+  },
+  // Totais das outras despesas por tipo: { '03': 120.5, '02': 30 }.
+  expenseTotalsByType: function (sadt) {
+    const out = {}
+    ;(sadt.expenses || []).forEach(function (e) {
+      out[e.type] = Calc.round2((out[e.type] || 0) + Calc.expenseTotal(e))
+    })
+    return out
+  },
+  expensesTotal: function (sadt) {
+    return Calc.round2((sadt.expenses || []).reduce(function (s, e) { return s + Calc.expenseTotal(e) }, 0))
+  },
+  // Total geral da SP/SADT: procedimentos + outras despesas.
+  sadtGuideTotal: function (sadt) {
+    return Calc.round2(Calc.sadtProceduresTotal(sadt) + Calc.expensesTotal(sadt))
+  },
+  // Total da guia de honorários individuais.
+  honorTotal: function (hon) {
+    return Calc.round2(hon.procedures.reduce(function (s, p) { return s + Calc.sadtItemTotal(p) }, 0))
+  },
   guideTotal: function (guide) {
-    return guide.guideType === 'sadt' && guide.sadt ? Calc.sadtGuideTotal(guide.sadt) : Calc.round2(guide.procedure.value)
+    if (guide.guideType === 'sadt' && guide.sadt) return Calc.sadtGuideTotal(guide.sadt)
+    if (guide.guideType === 'honorarios' && guide.hon) return Calc.honorTotal(guide.hon)
+    return Calc.round2(guide.procedure.value)
   }
 }
 
@@ -384,8 +410,11 @@ const Repo = {
     if (!q) return true
     const digits = q.replace(/\D/g, '')
     const p = Repo.patient(g.patientId)
-    const codes = g.guideType === 'sadt' && g.sadt
-      ? g.sadt.procedures.map(function (x) { return x.code + ' ' + x.description }).join(' ')
+    const items = g.guideType === 'sadt' && g.sadt
+      ? g.sadt.procedures.concat(g.sadt.expenses || [])
+      : g.guideType === 'honorarios' && g.hon ? g.hon.procedures : null
+    const codes = items
+      ? items.map(function (x) { return x.code + ' ' + x.description }).join(' ')
       : g.procedure.code + ' ' + g.procedure.description
     const text = Fmt.normalize([g.providerGuideNumber, g.operatorGuideNumber, g.cardNumber, p ? p.name : '', p ? p.cpf : '', codes].join(' '))
     const words = q.split(/\s+/)
@@ -441,6 +470,14 @@ const Repo = {
           factor: Calc.round2(p.factor)
         })
       })
+      data.hon = null
+      data.sadt.expenses = (data.sadt.expenses || []).map(function (e) {
+        return Object.assign({}, e, {
+          quantity: Math.round(e.quantity * 10000) / 10000,
+          unitValue: Calc.round2(e.unitValue),
+          factor: Calc.round2(e.factor)
+        })
+      })
       const first = data.sadt.procedures[0]
       // Resumo do primeiro item, para listagens (igual à versão desktop).
       data.procedure = {
@@ -449,9 +486,29 @@ const Repo = {
         description: first.description,
         value: Calc.sadtGuideTotal(data.sadt)
       }
+    } else if (data.guideType === 'honorarios') {
+      if (!data.hon || data.hon.procedures.length === 0) {
+        throw new Error('Inclua ao menos um procedimento na guia de honorários.')
+      }
+      data.sadt = null
+      data.hon.procedures = data.hon.procedures.map(function (p) {
+        return Object.assign({}, p, {
+          quantity: Math.max(1, Math.round(p.quantity)),
+          unitValue: Calc.round2(p.unitValue),
+          factor: Calc.round2(p.factor)
+        })
+      })
+      const first = data.hon.procedures[0]
+      data.procedure = {
+        tableCode: first.tableCode,
+        code: first.code,
+        description: first.description,
+        value: Calc.honorTotal(data.hon)
+      }
     } else {
       data.guideType = 'consulta'
       data.sadt = null
+      data.hon = null
       data.procedure.value = Calc.round2(data.procedure.value)
     }
     let saved
@@ -519,7 +576,7 @@ const Repo = {
       throw new Error('Todas as guias de um lote devem ser do mesmo convênio.')
     }
     if (guides.some(function (g) { return g.guideType !== guides[0].guideType })) {
-      throw new Error('Um lote não pode misturar guias de consulta e guias SP/SADT. Gere um lote para cada tipo.')
+      throw new Error('Um lote não pode misturar tipos de guia (consulta, SP/SADT e honorários). Gere um lote para cada tipo.')
     }
     const errors = Repo.checkGuides(guideIds)
     if (errors.length) {

@@ -90,7 +90,7 @@
   }
 
   function guideTypeLabel(type) {
-    return type === 'sadt' ? 'SP/SADT' : 'Consulta'
+    return type === 'sadt' ? 'SP/SADT' : type === 'honorarios' ? 'Honorários' : 'Consulta'
   }
 
   // Campo de busca na TUSS: mostra até 30 resultados e chama onPick(codigo, nome).
@@ -156,7 +156,7 @@
 
   const routes = [
     [/^guias$/, 'guias', viewGuides],
-    [/^guia\/nova\/(consulta|sadt)$/, 'guias', function (m) { viewGuideForm(null, m[1]) }],
+    [/^guia\/nova\/(consulta|sadt|honorarios)$/, 'guias', function (m) { viewGuideForm(null, m[1]) }],
     [/^guia\/(\d+)$/, 'guias', function (m) { viewGuideForm(Number(m[1])) }],
     [/^lotes$/, 'lotes', viewLotes],
     [/^lote\/(\d+)$/, 'lotes', function (m) { viewLote(Number(m[1])) }],
@@ -219,7 +219,7 @@
       return '<tr>' +
         '<td>' + (g.loteId ? '' : '<input type="checkbox" data-select="' + g.id + '" aria-label="Selecionar guia ' + esc(g.providerGuideNumber) + '">') + '</td>' +
         '<td class="mono nowrap">' + esc(g.providerGuideNumber) + '</td>' +
-        '<td><span class="tag' + (g.guideType === 'sadt' ? ' teal' : '') + '">' + guideTypeLabel(g.guideType) + '</span></td>' +
+        '<td><span class="tag' + (g.guideType === 'sadt' ? ' teal' : g.guideType === 'honorarios' ? ' amber' : '') + '">' + guideTypeLabel(g.guideType) + '</span></td>' +
         '<td class="nowrap">' + Fmt.date(g.serviceDate) + '</td>' +
         '<td>' + esc(patient ? patient.name : '—') + '</td>' +
         '<td>' + esc(operator ? operator.name : '—') + '</td>' +
@@ -235,7 +235,8 @@
     app.innerHTML =
       '<div class="page-head"><div><h1>Guias</h1><p class="sub">Emita as guias e junte as pendentes em um lote XML.</p></div>' +
       '<div class="actions"><a class="btn solid" href="#guia/nova/consulta">Nova guia de consulta</a>' +
-      '<a class="btn" href="#guia/nova/sadt">Nova guia SP/SADT</a></div></div>' +
+      '<a class="btn" href="#guia/nova/sadt">Nova guia SP/SADT</a>' +
+      '<a class="btn" href="#guia/nova/honorarios">Nova guia de honorários</a></div></div>' +
       firstSteps() +
       '<div class="filters">' +
       '<label class="field" style="flex:2 1 280px">Buscar<input id="f-query" type="search" placeholder="Nº da guia, beneficiário, CPF, carteirinha ou código…" value="' + esc(guideFilter.query) + '"></label>' +
@@ -244,7 +245,7 @@
       options([{ value: 'pending', label: 'Pendentes (sem lote)' }, { value: 'batched', label: 'Em lote' }, { value: 'all', label: 'Todas' }], guideFilter.status) +
       '</select></label>' +
       '<label class="field">Tipo<select id="f-type">' +
-      options([{ value: '', label: 'Todos' }, { value: 'consulta', label: 'Consulta' }, { value: 'sadt', label: 'SP/SADT' }], guideFilter.guideType) +
+      options([{ value: '', label: 'Todos' }, { value: 'consulta', label: 'Consulta' }, { value: 'sadt', label: 'SP/SADT' }, { value: 'honorarios', label: 'Honorários' }], guideFilter.guideType) +
       '</select></label></div>' +
       '<div id="selection"></div><div id="msg"></div>' +
       '<div class="table-wrap">' +
@@ -342,7 +343,25 @@
   }
 
   function emptyItem() {
-    return { date: '', startTime: '', endTime: '', tableCode: '22', code: '', description: '', quantity: 1, accessRoute: '', technique: '', factor: 1, unitValue: 0 }
+    return { date: '', startTime: '', endTime: '', tableCode: '22', code: '', description: '', quantity: 1, accessRoute: '', technique: '', factor: 1, unitValue: 0, role: '' }
+  }
+
+  // Outra despesa da SP/SADT (material, medicamento, taxa…).
+  function emptyExpense(type) {
+    const t = type || '03'
+    const info = TISS.EXPENSE_TYPES.find(function (x) { return x.value === t })
+    return { type: t, date: '', startTime: '', endTime: '', tableCode: info ? info.table : '19', code: '', description: '', quantity: 1, unit: '036', factor: 1, unitValue: 0, anvisa: '', manufacturerRef: '', operatingPermit: '' }
+  }
+
+  // Guia de honorários individuais (honorário do médico numa internação).
+  function emptyHon() {
+    const today = Fmt.today()
+    return {
+      requestGuideNumber: '', password: '',
+      hospitalIdType: 'codigo', hospitalId: '', hospitalName: '', hospitalCnes: '',
+      executorCode: '', startDate: today, endDate: today, issueDate: today,
+      role: '00', procedures: [emptyItem()]
+    }
   }
 
   function newGuide(type) {
@@ -353,6 +372,7 @@
     return {
       guideType: type,
       sadt: type === 'sadt' ? emptySadt() : null,
+      hon: type === 'honorarios' ? emptyHon() : null,
       operatorId: operatorId,
       patientId: null,
       providerGuideNumber: Repo.nextProviderGuideNumber(),
@@ -373,8 +393,12 @@
     }
   }
 
+  // Na guia de honorários, cada item tem o seu grau de participação.
+  let honorItems = false
+
   function itemHtml(p, i) {
     const total = Calc.sadtItemTotal({ quantity: p.quantity, unitValue: p.unitValue, factor: p.factor })
+    const isHonItem = honorItems
     return '<div class="item" data-item="' + i + '">' +
       '<div class="item-head"><strong>ITEM ' + (i + 1) + '</strong>' +
       '<button type="button" class="link-btn danger" data-remove-item="' + i + '">Remover</button></div>' +
@@ -388,6 +412,9 @@
       '<label class="field c2">Hora final<input type="time" data-k="endTime" value="' + esc(p.endTime) + '"></label>' +
       '<label class="field c2">Via de acesso<select data-k="accessRoute">' + options(TISS.SADT_ACCESS_ROUTES, p.accessRoute) + '</select></label>' +
       '<label class="field c3">Técnica<select data-k="technique">' + options(TISS.SADT_TECHNIQUES, p.technique) + '</select></label>' +
+      (isHonItem
+        ? '<label class="field c3">Grau de participação<select data-k="role">' + options([{ value: '', label: 'Igual ao da guia' }].concat(TISS.HONOR_PARTICIPATION), p.role || '') + '</select></label>'
+        : '') +
       '<label class="field c2">Quantidade<input inputmode="numeric" data-k="quantity" value="' + esc(p.quantity) + '"></label>' +
       '<label class="field c2">Fator red./acrésc.<input inputmode="decimal" data-k="factor" value="' + esc(Fmt.number2(p.factor).replace(/\./g, '')) + '"></label>' +
       '<label class="field c3">Valor unitário (R$)<input inputmode="decimal" data-k="unitValue" value="' + esc(Fmt.moneyInput(p.unitValue)) + '"></label>' +
@@ -412,7 +439,53 @@
         accessRoute: get('accessRoute'),
         technique: get('technique'),
         factor: Fmt.parseMoney(get('factor')),
-        unitValue: Fmt.parseMoney(get('unitValue'))
+        unitValue: Fmt.parseMoney(get('unitValue')),
+        role: $('[data-k="role"]', el) ? get('role') : ''
+      }
+    })
+  }
+
+  function expenseHtml(e, i) {
+    return '<div class="item" data-expense="' + i + '">' +
+      '<div class="item-head"><strong>DESPESA ' + (i + 1) + '</strong>' +
+      '<button type="button" class="link-btn danger" data-remove-expense="' + i + '">Remover</button></div>' +
+      '<div class="grid">' +
+      '<label class="field c4">Tipo <span class="req">*</span><select data-e="type">' + options(TISS.EXPENSE_TYPES, e.type) + '</select></label>' +
+      '<label class="field c2">Tabela<select data-e="tableCode">' + options(TISS.TABLES.map(function (t) { return { value: t.value, label: t.value } }), e.tableCode) + '</select></label>' +
+      '<label class="field c3">Código <span class="req">*</span><input class="code" data-e="code" maxlength="10" value="' + esc(e.code) + '"></label>' +
+      '<label class="field c3">Data<input type="date" data-e="date" value="' + esc(e.date) + '"><span class="hint">Vazio = data do atendimento</span></label>' +
+      '<label class="field c12">Descrição <span class="req">*</span><input data-e="description" maxlength="150" value="' + esc(e.description) + '" placeholder="Ex.: Luva cirúrgica estéril nº 7,5 / Dipirona 500 mg/ml"></label>' +
+      '<label class="field c4">Unidade de medida <span class="req">*</span><select data-e="unit">' + options(TISS.EXPENSE_UNITS, e.unit) + '</select></label>' +
+      '<label class="field c2">Quantidade<input inputmode="decimal" data-e="quantity" value="' + esc(String(e.quantity).replace('.', ',')) + '"></label>' +
+      '<label class="field c2">Fator red./acrésc.<input inputmode="decimal" data-e="factor" value="' + esc(Fmt.number2(e.factor).replace(/\./g, '')) + '"></label>' +
+      '<label class="field c2">Valor unitário (R$)<input inputmode="decimal" data-e="unitValue" value="' + esc(Fmt.moneyInput(e.unitValue)) + '"></label>' +
+      '<div class="field c2" style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px">' +
+      '<span class="hint">Total</span><strong data-expense-total>' + Fmt.money(Calc.expenseTotal(e)) + '</strong></div>' +
+      '<label class="field c4">Registro ANVISA<input class="code" data-e="anvisa" maxlength="15" value="' + esc(e.anvisa) + '"></label>' +
+      '<label class="field c4">Referência do fabricante<input data-e="manufacturerRef" maxlength="60" value="' + esc(e.manufacturerRef) + '"></label>' +
+      '<label class="field c4">Autorização de funcionamento<input data-e="operatingPermit" maxlength="30" value="' + esc(e.operatingPermit) + '"></label>' +
+      '</div></div>'
+  }
+
+  function readExpenses() {
+    return $$('[data-expense]').map(function (el) {
+      const get = function (k) { return $('[data-e="' + k + '"]', el).value }
+      const q = String(get('quantity')).trim().replace(/\./g, '').replace(',', '.')
+      return {
+        type: get('type'),
+        date: get('date'),
+        startTime: '',
+        endTime: '',
+        tableCode: get('tableCode'),
+        code: get('code').trim(),
+        description: get('description').trim(),
+        quantity: Number(q) || 0,
+        unit: get('unit'),
+        factor: Fmt.parseMoney(get('factor')),
+        unitValue: Fmt.parseMoney(get('unitValue')),
+        anvisa: get('anvisa').trim(),
+        manufacturerRef: get('manufacturerRef').trim(),
+        operatingPermit: get('operatingPermit').trim()
       }
     })
   }
@@ -427,12 +500,18 @@
     }
     const g = existing ? Db.clone(existing) : newGuide(type)
     const isSadt = g.guideType === 'sadt'
+    const isHon = g.guideType === 'honorarios'
+    const hasItems = isSadt || isHon
+    honorItems = isHon
     const s = Db.state.settings
     const sadt = g.sadt
+    if (isSadt && !sadt.expenses) sadt.expenses = []
+    const hon = g.hon
     const patients = Repo.patients()
+    const typeTitle = isSadt ? 'SP/SADT' : isHon ? 'de honorários individuais' : 'de consulta'
 
     const head =
-      '<div class="page-head"><div><h1>' + (editing ? 'Editar guia ' : 'Nova guia ') + (isSadt ? 'SP/SADT' : 'de consulta') + '</h1>' +
+      '<div class="page-head"><div><h1>' + (editing ? 'Editar guia ' : 'Nova guia ') + typeTitle + '</h1>' +
       (editing ? '<p class="sub mono">Nº ' + esc(g.providerGuideNumber) + '</p>' : '') + '</div></div>'
 
     const noOps = Repo.operators().length === 0
@@ -450,6 +529,10 @@
           '<label class="field c3">Senha<input class="code" id="s-password" maxlength="20" value="' + esc(sadt.password) + '"></label>' +
           '<label class="field c3">Validade da senha<input type="date" id="s-passvalid" value="' + esc(sadt.passwordValidity) + '"></label>'
         : '') +
+      (isHon
+        ? '<label class="field c4">Nº da guia de solicitação de internação <span class="req">*</span><input class="code" id="h-request" maxlength="20" value="' + esc(hon.requestGuideNumber) + '"></label>' +
+          '<label class="field c4">Senha<input class="code" id="h-password" maxlength="20" value="' + esc(hon.password) + '"></label>'
+        : '') +
       '</div>'
 
     const benef =
@@ -462,6 +545,25 @@
       '</div>'
 
     let solicit = ''
+    if (isHon) {
+      solicit =
+        '<div class="form-section">Hospital / local do atendimento</div><div class="grid">' +
+        '<label class="field c3">Identificação<select id="h-hidtype">' + options([{ value: 'codigo', label: 'Código na operadora' }, { value: 'cnpj', label: 'CNPJ' }], hon.hospitalIdType) + '</select></label>' +
+        '<label class="field c3">Código / CNPJ <span class="req">*</span><input class="code" id="h-hid" maxlength="18" value="' + esc(hon.hospitalId) + '"></label>' +
+        '<label class="field c4">Nome do hospital <span class="req">*</span><input id="h-hname" maxlength="70" value="' + esc(hon.hospitalName) + '"></label>' +
+        '<label class="field c2">CNES<input class="code" id="h-hcnes" maxlength="7" value="' + esc(hon.hospitalCnes) + '"></label>' +
+        '</div>' +
+        '<div class="form-section">Contratado executante (você)</div><div class="grid">' +
+        '<label class="field c4">Seu código no convênio<input class="code" id="h-execcode" maxlength="14" value="' + esc(hon.executorCode) + '">' +
+        '<span class="hint">Vazio = código do prestador cadastrado no convênio</span></label>' +
+        '<div class="c8 hint" style="grid-column:span 8;align-self:end">Nome, conselho, CBO e CNES vêm do cadastro em <a href="#prestador">Prestador</a>.</div>' +
+        '</div>' +
+        '<div class="form-section">Internação</div><div class="grid">' +
+        '<label class="field c4">Início do faturamento <span class="req">*</span><input type="date" id="h-start" value="' + esc(hon.startDate) + '"></label>' +
+        '<label class="field c4">Fim do faturamento<input type="date" id="h-end" value="' + esc(hon.endDate) + '"></label>' +
+        '<label class="field c4">Data de emissão da guia <span class="req">*</span><input type="date" id="h-issue" value="' + esc(hon.issueDate) + '"></label>' +
+        '</div>'
+    }
     if (isSadt) {
       const r = sadt.requester
       solicit =
@@ -485,7 +587,7 @@
         '</div>'
     }
 
-    const atend =
+    const atend = isHon ? '' :
       '<div class="form-section">Atendimento</div><div class="grid">' +
       '<label class="field c3">Data do atendimento <span class="req">*</span><input type="date" id="g-date" value="' + esc(g.serviceDate) + '"></label>' +
       (isSadt ? '<label class="field c3">Tipo de atendimento<select id="s-servicetype">' + options(TISS.SADT_SERVICE_TYPES, sadt.serviceType) + '</select></label>' : '') +
@@ -502,7 +604,20 @@
         '<label class="field" style="max-width:320px;margin:6px 0 12px">Grau de participação<select id="s-role">' + options(TISS.SADT_PARTICIPATION, sadt.executorRole) + '</select></label>' +
         '<div class="items" id="items">' + sadt.procedures.map(itemHtml).join('') + '</div>' +
         '<button type="button" class="btn small" id="add-item" style="margin-top:12px">+ Adicionar procedimento</button>' +
-        '<div class="total-line"><span class="muted">Total da guia</span><strong id="sadt-total"></strong></div>'
+        '<div class="total-line"><span class="muted">Total dos procedimentos</span><strong id="procs-total"></strong></div>' +
+        '<div class="form-section">Outras despesas (materiais, medicamentos, taxas…)</div>' +
+        '<p class="hint" style="margin:0 0 10px">Use para materiais, medicamentos, taxas, diárias, gases e OPME usados no atendimento. Elas vão no mesmo XML da guia (anexo de outras despesas).</p>' +
+        '<div class="items" id="expenses">' + sadt.expenses.map(expenseHtml).join('') + '</div>' +
+        '<button type="button" class="btn small" id="add-expense" style="margin-top:12px">+ Adicionar despesa</button>' +
+        '<div class="total-line"><span class="muted">Total das outras despesas</span><strong id="expenses-total"></strong></div>' +
+        '<div class="total-line"><span class="muted">Total geral da guia</span><strong id="sadt-total"></strong></div>'
+    } else if (isHon) {
+      procs =
+        '<div class="form-section">Procedimentos realizados</div>' +
+        '<label class="field" style="max-width:320px;margin:0 0 12px">Grau de participação (padrão da guia)<select id="h-role">' + options(TISS.HONOR_PARTICIPATION, hon.role) + '</select></label>' +
+        '<div class="items" id="items">' + hon.procedures.map(itemHtml).join('') + '</div>' +
+        '<button type="button" class="btn small" id="add-item" style="margin-top:12px">+ Adicionar procedimento</button>' +
+        '<div class="total-line"><span class="muted">Total de honorários</span><strong id="sadt-total"></strong></div>'
     } else {
       procs =
         '<div class="form-section">Procedimento</div><div class="grid">' +
@@ -647,7 +762,7 @@
 
     function applyOperatorPrice() {
       const opId = currentOperatorId()
-      if (isSadt) {
+      if (hasItems) {
         $$('[data-item]').forEach(function (el) {
           const code = $('[data-k="code"]', el).value.trim()
           if (!code) return
@@ -666,7 +781,7 @@
 
     // --- procedimento da consulta
     function fillCatalog() {
-      if (isSadt) return
+      if (hasItems) return
       const opId = currentOperatorId()
       const op = opId ? Repo.operator(opId) : null
       const sel = $('#p-catalog')
@@ -682,12 +797,12 @@
     }
 
     function updateConsultaHint() {
-      if (isSadt) return
+      if (hasItems) return
       const typed = $('#p-value').value.trim() ? Fmt.parseMoney($('#p-value').value) : null
       $('#p-pricehint').textContent = priceHint(currentOperatorId(), $('#p-table').value, $('#p-code').value.trim(), typed)
     }
 
-    if (!isSadt) {
+    if (!hasItems) {
       fillCatalog()
       $('#p-catalog').addEventListener('change', function (e) {
         const op = Repo.operator(currentOperatorId())
@@ -737,7 +852,7 @@
 
     // --- SP/SADT: solicitante, itens e totais
     function updateTotals() {
-      if (!isSadt) return
+      if (!hasItems) return
       const items = readItems()
       const opId = currentOperatorId()
       $$('[data-item]').forEach(function (el, i) {
@@ -746,7 +861,18 @@
         const typed = $('[data-k="unitValue"]', el).value.trim() ? it.unitValue : null
         $('[data-price-hint]', el).textContent = priceHint(opId, it.tableCode, it.code, typed)
       })
-      $('#sadt-total').textContent = Fmt.money(Calc.sadtGuideTotal({ procedures: items }))
+      if (isHon) {
+        $('#sadt-total').textContent = Fmt.money(Calc.honorTotal({ procedures: items }))
+        return
+      }
+      const expenses = readExpenses()
+      $$('[data-expense]').forEach(function (el, i) {
+        $('[data-expense-total]', el).textContent = Fmt.money(Calc.expenseTotal(expenses[i]))
+      })
+      const all = { procedures: items, expenses: expenses }
+      $('#procs-total').textContent = Fmt.money(Calc.sadtProceduresTotal(all))
+      $('#expenses-total').textContent = Fmt.money(Calc.expensesTotal(all))
+      $('#sadt-total').textContent = Fmt.money(Calc.sadtGuideTotal(all))
     }
 
     function bindItems() {
@@ -773,6 +899,33 @@
     if (isSadt) {
       $('#r-same').addEventListener('change', function (e) { $('#r-fields').hidden = e.target.checked })
       $('#s-servicetype').addEventListener('change', function (e) { $('#consult-type-wrap').hidden = e.target.value !== '04' })
+      // Outras despesas: adicionar, remover, tabela sugerida pelo tipo e totais.
+      const redrawExpenses = function (list) {
+        $('#expenses').innerHTML = list.map(expenseHtml).join('')
+        updateTotals()
+      }
+      $('#add-expense').addEventListener('click', function () {
+        const list = readExpenses()
+        list.push(emptyExpense(list.length ? list[list.length - 1].type : '03'))
+        redrawExpenses(list)
+      })
+      $('#expenses').addEventListener('click', function (e) {
+        const rm = e.target.closest('[data-remove-expense]')
+        if (!rm) return
+        const list = readExpenses()
+        list.splice(Number(rm.dataset.removeExpense), 1)
+        redrawExpenses(list)
+      })
+      $('#expenses').addEventListener('change', function (e) {
+        if (e.target.dataset.e === 'type') {
+          const info = TISS.EXPENSE_TYPES.find(function (x) { return x.value === e.target.value })
+          if (info) $('[data-e="tableCode"]', e.target.closest('[data-expense]')).value = info.table
+        }
+        updateTotals()
+      })
+      $('#expenses').addEventListener('input', updateTotals)
+    }
+    if (hasItems) {
       $('#add-item').addEventListener('click', function () {
         const items = readItems()
         items.push(emptyItem())
@@ -782,7 +935,7 @@
         const rm = e.target.closest('[data-remove-item]')
         if (rm) {
           const items = readItems()
-          if (items.length === 1) return toast('A guia SP/SADT precisa de ao menos um procedimento.', true)
+          if (items.length === 1) return toast('A guia precisa de ao menos um procedimento.', true)
           items.splice(Number(rm.dataset.removeItem), 1)
           redrawItems(items)
           return
@@ -812,24 +965,48 @@
       const andPrint = !!(e.submitter && e.submitter.dataset.printAfter)
       const msg = $('#form-msg')
       try {
+        const val = function (sel, fallback) { const el = $(sel); return el ? el.value : fallback }
         const input = {
-          guideType: isSadt ? 'sadt' : 'consulta',
+          guideType: isSadt ? 'sadt' : isHon ? 'honorarios' : 'consulta',
           operatorId: Number($('#g-operator').value) || null,
           patientId: Number($('#g-patient').value) || null,
           providerGuideNumber: $('#g-number').value,
           operatorGuideNumber: $('#g-opnumber').value.trim(),
           cardNumber: $('#g-card').value,
           newborn: $('#g-newborn').checked,
-          serviceDate: $('#g-date').value,
-          consultationType: $('#g-ctype').value,
-          accidentIndication: $('#g-accident').value,
-          serviceRegime: $('#g-regime').value,
+          serviceDate: isHon ? $('#h-issue').value : $('#g-date').value,
+          consultationType: val('#g-ctype', g.consultationType),
+          accidentIndication: val('#g-accident', g.accidentIndication),
+          serviceRegime: isHon ? '03' : val('#g-regime', g.serviceRegime),
           observation: $('#g-obs').value.trim(),
           sadt: null,
           procedure: null
         }
-        if (!input.serviceDate) throw new Error('Informe a data do atendimento.')
-        if (isSadt) {
+        if (!input.serviceDate) throw new Error(isHon ? 'Informe a data de emissão da guia.' : 'Informe a data do atendimento.')
+        if (isHon) {
+          const items = readItems()
+          items.forEach(function (p, i) {
+            if (!p.code) throw new Error('Item ' + (i + 1) + ': informe o código do procedimento.')
+            if (!p.description) throw new Error('Item ' + (i + 1) + ': informe a descrição.')
+            if (Number.isNaN(p.unitValue) || Number.isNaN(p.factor)) throw new Error('Item ' + (i + 1) + ': valor ou fator inválido.')
+          })
+          if (!$('#h-start').value) throw new Error('Informe a data de início do faturamento.')
+          input.hon = {
+            requestGuideNumber: $('#h-request').value.trim(),
+            password: $('#h-password').value.trim(),
+            hospitalIdType: $('#h-hidtype').value,
+            hospitalId: $('#h-hid').value.trim(),
+            hospitalName: $('#h-hname').value.trim(),
+            hospitalCnes: $('#h-hcnes').value.trim(),
+            executorCode: $('#h-execcode').value.trim(),
+            startDate: $('#h-start').value,
+            endDate: $('#h-end').value,
+            issueDate: $('#h-issue').value,
+            role: $('#h-role').value,
+            procedures: items
+          }
+          input.procedure = { tableCode: '', code: '', description: '', value: 0 }
+        } else if (isSadt) {
           const items = readItems()
           items.forEach(function (p, i) {
             if (!p.code) throw new Error('Item ' + (i + 1) + ': informe o código do procedimento.')
@@ -859,8 +1036,15 @@
             serviceType: $('#s-servicetype').value,
             identifyExecutor: $('#s-identify').checked,
             executorRole: $('#s-role').value,
-            procedures: items
+            procedures: items,
+            expenses: readExpenses()
           }
+          input.sadt.expenses.forEach(function (x, i) {
+            if (!x.code) throw new Error('Despesa ' + (i + 1) + ': informe o código.')
+            if (!x.description) throw new Error('Despesa ' + (i + 1) + ': informe a descrição.')
+            if (!(x.quantity > 0)) throw new Error('Despesa ' + (i + 1) + ': quantidade inválida.')
+            if (Number.isNaN(x.unitValue) || Number.isNaN(x.factor)) throw new Error('Despesa ' + (i + 1) + ': valor ou fator inválido.')
+          })
           input.procedure = { tableCode: '', code: '', description: '', value: 0 }
         } else {
           const value = Fmt.parseMoney($('#p-value').value)

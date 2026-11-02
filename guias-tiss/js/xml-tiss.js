@@ -41,6 +41,10 @@ const XmlTiss = (function () {
     return (Math.round(value * 100) / 100).toFixed(2)
   }
 
+  function quantity4(value) {
+    return (Math.round(value * 10000) / 10000).toFixed(4)
+  }
+
   function escapeXml(value) {
     return value
       .replace(/&/g, '&amp;')
@@ -207,6 +211,48 @@ const XmlTiss = (function () {
 
     const hasAuthorization = !!sanitize(sadt.authorizationDate || '')
     const total = money(Calc.sadtGuideTotal(sadt))
+    const expenses = sadt.expenses || []
+
+    // Outras despesas (materiais, medicamentos, taxas…): ct_outrasDespesas
+    const expenseNodes = expenses.map(function (e, i) {
+      return group('despesa', [
+        leaf('sequencialItem', i + 1),
+        leaf('codigoDespesa', e.type),
+        group('servicosExecutados', [
+          leaf('dataExecucao', e.date || guide.serviceDate),
+          ...optionalLeaf('horaInicial', time(e.startTime)),
+          ...optionalLeaf('horaFinal', time(e.endTime)),
+          leaf('codigoTabela', e.tableCode),
+          leaf('codigoProcedimento', e.code, 10),
+          leaf('quantidadeExecutada', quantity4(e.quantity)),
+          leaf('unidadeMedida', e.unit),
+          leaf('reducaoAcrescimo', money(e.factor)),
+          leaf('valorUnitario', money(e.unitValue)),
+          leaf('valorTotal', money(Calc.expenseTotal(e))),
+          leaf('descricaoProcedimento', e.description, 150),
+          ...optionalLeaf('registroANVISA', e.anvisa, 15),
+          ...optionalLeaf('codigoRefFabricante', e.manufacturerRef, 60),
+          ...optionalLeaf('autorizacaoFuncionamento', e.operatingPermit, 30)
+        ])
+      ])
+    })
+
+    // Valor total: sem outras despesas, fica igual à versão desktop (procedimentos + total geral).
+    let totalNodes = [leaf('valorProcedimentos', total), leaf('valorTotalGeral', total)]
+    if (expenses.length) {
+      const byType = Calc.expenseTotalsByType(sadt)
+      const part = function (name, code) { return byType[code] ? [leaf(name, money(byType[code]))] : [] }
+      totalNodes = [
+        leaf('valorProcedimentos', money(Calc.sadtProceduresTotal(sadt))),
+        ...part('valorDiarias', '05'),
+        ...part('valorTaxasAlugueis', '07'),
+        ...part('valorMateriais', '03'),
+        ...part('valorMedicamentos', '02'),
+        ...part('valorOPME', '08'),
+        ...part('valorGasesMedicinais', '01'),
+        leaf('valorTotalGeral', total)
+      ]
+    }
 
     return group('guiaSP-SADT', [
       group('cabecalhoGuia', [
@@ -249,9 +295,84 @@ const XmlTiss = (function () {
         ...(sadt.serviceType === '04' ? [leaf('tipoConsulta', guide.consultationType)] : []),
         leaf('regimeAtendimento', guide.serviceRegime)
       ]),
-      group('procedimentosExecutados', items),
+      ...(items.length ? [group('procedimentosExecutados', items)] : []),
+      ...(expenseNodes.length ? [group('outrasDespesas', expenseNodes)] : []),
       ...optionalLeaf('observacao', guide.observation, 500),
-      group('valorTotal', [leaf('valorProcedimentos', total), leaf('valorTotalGeral', total)])
+      group('valorTotal', totalNodes)
+    ])
+  }
+
+  // ---------------------------------------------------------------------------
+  // Guia de honorários individuais (ctm_honorarioIndividualGuia)
+  // ---------------------------------------------------------------------------
+
+  // Hospital / local onde o atendimento aconteceu: código na operadora ou CNPJ.
+  function hospitalIdentification(hon) {
+    if (hon.hospitalIdType === 'cnpj') return leaf('cnpjLocalExecutante', onlyDigits(hon.hospitalId))
+    return leaf('codigoNaOperadora', hon.hospitalId, 14)
+  }
+
+  function honorGuide(guide, operator, settings, doctorName) {
+    const hon = guide.hon
+    const professionalCode = executorProfessionalCode(settings, operator)
+    const items = hon.procedures.map(function (p, i) {
+      return group('procedimentoRealizado', [
+        leaf('sequencialItem', i + 1),
+        leaf('dataExecucao', p.date || hon.startDate),
+        ...optionalLeaf('horaInicial', time(p.startTime)),
+        ...optionalLeaf('horaFinal', time(p.endTime)),
+        group('procedimento', [
+          leaf('codigoTabela', p.tableCode),
+          leaf('codigoProcedimento', p.code, 10),
+          leaf('descricaoProcedimento', p.description, 150)
+        ]),
+        leaf('quantidadeExecutada', p.quantity),
+        ...optionalLeaf('viaAcesso', p.accessRoute),
+        ...optionalLeaf('tecnicaUtilizada', p.technique),
+        leaf('reducaoAcrescimo', money(p.factor)),
+        leaf('valorUnitario', money(p.unitValue)),
+        leaf('valorTotal', money(Calc.sadtItemTotal(p))),
+        group('profissionais', [
+          leaf('grauParticipacao', p.role || hon.role),
+          group('codProfissional', [professionalCode]),
+          leaf('nomeProfissional', doctorName, 70),
+          leaf('conselhoProfissional', settings.councilCode),
+          leaf('numeroConselhoProfissional', settings.councilNumber, 15),
+          leaf('UF', settings.councilUf),
+          leaf('CBO', settings.cbos)
+        ])
+      ])
+    })
+
+    return group('guiaHonorarios', [
+      group('cabecalhoGuia', [
+        leaf('registroANS', onlyDigits(operator.ansRegistry)),
+        leaf('numeroGuiaPrestador', guide.providerGuideNumber, 20)
+      ]),
+      leaf('guiaSolicInternacao', hon.requestGuideNumber, 20),
+      ...optionalLeaf('senha', hon.password, 20),
+      ...optionalLeaf('numeroGuiaOperadora', guide.operatorGuideNumber, 20),
+      group('beneficiario', [
+        leaf('numeroCarteira', guide.cardNumber, 20),
+        leaf('atendimentoRN', guide.newborn ? 'S' : 'N')
+      ]),
+      group('localContratado', [
+        group('codigoContratado', [hospitalIdentification(hon)]),
+        leaf('nomeContratado', hon.hospitalName, 70),
+        leaf('cnes', onlyDigits(hon.hospitalCnes) || CNES_NOT_INFORMED)
+      ]),
+      group('dadosContratadoExecutante', [
+        leaf('codigonaOperadora', hon.executorCode || operator.providerCode, 14),
+        leaf('cnesContratadoExecutante', cnes(settings))
+      ]),
+      group('dadosInternacao', [
+        leaf('dataInicioFaturamento', hon.startDate),
+        leaf('dataFimFaturamento', hon.endDate || hon.startDate)
+      ]),
+      group('procedimentosRealizados', items),
+      ...optionalLeaf('observacao', guide.observation, 500),
+      leaf('valorTotalHonorarios', money(Calc.honorTotal(hon))),
+      leaf('dataEmissaoGuia', hon.issueDate || guide.serviceDate)
     ])
   }
 
@@ -292,9 +413,9 @@ const XmlTiss = (function () {
     ])
 
     const guideNodes = input.guides.map(function (g) {
-      return g.guideType === 'sadt'
-        ? sadtGuide(g, operator, settings, doctorName)
-        : consultaGuide(g, operator, settings, doctorName)
+      if (g.guideType === 'sadt') return sadtGuide(g, operator, settings, doctorName)
+      if (g.guideType === 'honorarios') return honorGuide(g, operator, settings, doctorName)
+      return consultaGuide(g, operator, settings, doctorName)
     })
 
     const body = group('prestadorParaOperadora', [
@@ -362,6 +483,10 @@ const XmlTiss = (function () {
     }
     if (!guide.providerGuideNumber.trim()) push('número da guia no prestador é obrigatório.')
     if (!guide.cardNumber.trim()) push('número da carteirinha é obrigatório.')
+    if (guide.guideType === 'honorarios') {
+      validateHonor(guide, operator, settings, push)
+      return errors
+    }
     if (!isValidDate(guide.serviceDate)) push('data de atendimento inválida.')
     if (guide.guideType === 'sadt') {
       validateSadt(guide, operator, settings, push)
@@ -416,6 +541,19 @@ const XmlTiss = (function () {
       if (p.unitValue > maxItem || Calc.sadtItemTotal(p) > maxItem)
         push(item + ': valor acima do máximo permitido na versão ' + version + ' (' + fmt(maxItem) + ').')
     })
+    ;(sadt.expenses || []).forEach(function (e, i) {
+      const item = 'despesa ' + (i + 1)
+      if (!TISS.EXPENSE_TYPES.some(function (t) { return t.value === e.type })) push(item + ': escolha o tipo (material, medicamento…).')
+      if (!e.code.trim()) push(item + ': código é obrigatório.')
+      if (!sanitize(e.description)) push(item + ': descrição é obrigatória.')
+      if (!e.unit) push(item + ': escolha a unidade de medida.')
+      if (e.date && !isValidDate(e.date)) push(item + ': data inválida.')
+      if (!(e.quantity > 0 && e.quantity < 100000)) push(item + ': quantidade inválida.')
+      if (!(e.factor > 0 && e.factor <= 9.99)) push(item + ': fator de redução/acréscimo deve ser entre 0,01 e 9,99.')
+      if (!(e.unitValue >= 0)) push(item + ': valor unitário inválido.')
+      if (e.unitValue > maxItem || Calc.expenseTotal(e) > maxItem)
+        push(item + ': valor acima do máximo permitido na versão ' + version + ' (' + fmt(maxItem) + ').')
+    })
     if (Calc.sadtGuideTotal(sadt) > TISS.MAX_GUIDE_TOTAL) push('valor total da guia acima do máximo permitido.')
     if (sadt.identifyExecutor && !executorProfessionalCode(settings, operator)) {
       push(
@@ -423,6 +561,43 @@ const XmlTiss = (function () {
           'código do prestador no convênio — ou desmarque "Identificar o médico executante".'
       )
     }
+  }
+
+  function validateHonor(guide, operator, settings, push) {
+    const hon = guide.hon
+    if (!hon) {
+      push('dados da guia de honorários ausentes.')
+      return
+    }
+    const version = operator.tissVersion || TISS.DEFAULT_VERSION
+    const maxItem = TISS.maxItemValue(version)
+    if (!hon.requestGuideNumber.trim()) push('informe o nº da guia de solicitação de internação.')
+    if (!hon.hospitalId.trim()) push('informe o código (ou CNPJ) do hospital/local do atendimento.')
+    if (hon.hospitalIdType === 'cnpj' && onlyDigits(hon.hospitalId).length !== 14) push('CNPJ do hospital deve ter 14 dígitos.')
+    if (!hon.hospitalName.trim()) push('informe o nome do hospital/local do atendimento.')
+    if (!(hon.executorCode || operator.providerCode || '').trim())
+      push('informe o seu código no convênio (contratado executante) — na guia ou no cadastro do convênio.')
+    if (!isValidDate(hon.startDate)) push('data de início do faturamento inválida.')
+    if (hon.endDate && !isValidDate(hon.endDate)) push('data de fim do faturamento inválida.')
+    if (hon.endDate && hon.startDate && hon.endDate < hon.startDate) push('a data de fim do faturamento é anterior à de início.')
+    if (!isValidDate(hon.issueDate || guide.serviceDate)) push('data de emissão inválida.')
+    if (!executorProfessionalCode(settings, operator)) {
+      push('para identificar o médico, informe o CPF em Prestador ou o código do prestador no convênio.')
+    }
+    if (hon.procedures.length === 0) push('inclua ao menos um procedimento.')
+    hon.procedures.forEach(function (p, i) {
+      const item = 'item ' + (i + 1)
+      if (!p.code.trim()) push(item + ': código do procedimento é obrigatório.')
+      if (!sanitize(p.description)) push(item + ': descrição do procedimento é obrigatória.')
+      if (p.date && !isValidDate(p.date)) push(item + ': data de execução inválida.')
+      if (!(p.role || hon.role)) push(item + ': informe o grau de participação.')
+      if (!(p.quantity >= 1 && p.quantity <= 999)) push(item + ': quantidade deve ser de 1 a 999.')
+      if (!(p.factor > 0 && p.factor <= 9.99)) push(item + ': fator de redução/acréscimo deve ser entre 0,01 e 9,99.')
+      if (!(p.unitValue >= 0)) push(item + ': valor unitário inválido.')
+      if (p.unitValue > maxItem || Calc.sadtItemTotal(p) > maxItem)
+        push(item + ': valor acima do máximo permitido na versão ' + version + ' (' + fmt(maxItem) + ').')
+    })
+    if (Calc.honorTotal(hon) > TISS.MAX_GUIDE_TOTAL) push('valor total da guia acima do máximo permitido.')
   }
 
   return {
