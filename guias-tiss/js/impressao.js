@@ -309,14 +309,15 @@ const Impressao = (function () {
       '<th>27 - Valor Unitário (R$)</th><th>28 - Valor Total (R$)</th><th>30 - Grau de Participação</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
       section('Identificação do(s) Profissional(is)') +
-      row(
-        field(31, 'Código na Operadora / CPF', profCode, 2),
-        field(32, 'Nome do Profissional', settings.professionalName, 4),
-        field(33, 'Conselho Profissional', council(settings.councilCode)),
-        field(34, 'Número no Conselho', settings.councilNumber),
-        field(35, 'UF', uf(settings.councilUf)),
-        field(36, 'Código CBO', settings.cbos)
-      ) +
+      '<table class="items"><thead><tr><th>Seq</th><th>30 - Grau de Participação</th><th>31 - Código na Operadora / CPF</th>' +
+      '<th>32 - Nome do Profissional</th><th>33 - Conselho</th><th>34 - Número no Conselho</th><th>35 - UF</th><th>36 - Código CBO</th></tr></thead><tbody>' +
+      [{ role: hon.role, id: profCode, name: settings.professionalName, councilCode: settings.councilCode, councilNumber: settings.councilNumber, councilUf: settings.councilUf, cbos: settings.cbos }]
+        .concat(hon.team || [])
+        .map(function (m, i) {
+          return '<tr><td>' + (i + 1) + '</td><td>' + esc(roleLabel(m.role)) + '</td><td>' + esc(m.id) + '</td><td>' + esc(m.name) + '</td>' +
+            '<td>' + esc(council(m.councilCode)) + '</td><td>' + esc(m.councilNumber) + '</td><td>' + esc(uf(m.councilUf)) + '</td><td>' + esc(m.cbos) + '</td></tr>'
+        }).join('') +
+      '</tbody></table>' +
       row(field(37, 'Observação / Justificativa', guide.observation)) +
       row(
         field(38, 'Valor Total dos Honorários (R$)', money(Calc.honorTotal(hon))),

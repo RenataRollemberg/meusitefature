@@ -340,7 +340,21 @@ const XmlTiss = (function () {
           leaf('numeroConselhoProfissional', settings.councilNumber, 15),
           leaf('UF', settings.councilUf),
           leaf('CBO', settings.cbos)
-        ])
+        ]),
+        // Demais profissionais da equipe (1º auxiliar, 2º auxiliar, anestesista…)
+        ...(hon.team || []).map(function (m) {
+          return group('profissionais', [
+            leaf('grauParticipacao', m.role),
+            group('codProfissional', [
+              m.idType === 'cpf' ? leaf('cpfContratado', onlyDigits(m.id)) : leaf('codigoPrestadorNaOperadora', m.id, 14)
+            ]),
+            leaf('nomeProfissional', m.name, 70),
+            leaf('conselhoProfissional', m.councilCode),
+            leaf('numeroConselhoProfissional', m.councilNumber, 15),
+            leaf('UF', m.councilUf),
+            leaf('CBO', m.cbos)
+          ])
+        })
       ])
     })
 
@@ -596,6 +610,14 @@ const XmlTiss = (function () {
       if (!(p.unitValue >= 0)) push(item + ': valor unitário inválido.')
       if (p.unitValue > maxItem || Calc.sadtItemTotal(p) > maxItem)
         push(item + ': valor acima do máximo permitido na versão ' + version + ' (' + fmt(maxItem) + ').')
+    })
+    ;(hon.team || []).forEach(function (m, i) {
+      const who = 'profissional ' + (i + 2) + (m.name ? ' (' + m.name + ')' : '')
+      if (!m.role) push(who + ': informe o grau de participação.')
+      if (!sanitize(m.name)) push(who + ': informe o nome.')
+      if (m.idType === 'cpf' && onlyDigits(m.id).length !== 11) push(who + ': o CPF deve ter 11 dígitos.')
+      if (m.idType !== 'cpf' && !String(m.id || '').trim()) push(who + ': informe o código no convênio.')
+      if (!String(m.councilNumber || '').trim() || !m.councilUf || !m.cbos) push(who + ': complete conselho, número, UF e CBO-S.')
     })
     if (Calc.honorTotal(hon) > TISS.MAX_GUIDE_TOTAL) push('valor total da guia acima do máximo permitido.')
   }
