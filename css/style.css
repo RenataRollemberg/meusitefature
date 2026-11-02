@@ -359,3 +359,4 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
 .termos__resumo li { color: var(--texto); }
 .termos h2 { scroll-margin-top: 90px; }
 .termos strong { color: var(--texto); }
+.termos h3 { margin: 18px 0 8px; }
