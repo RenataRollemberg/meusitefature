@@ -360,3 +360,45 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde); bor
 .termos h2 { scroll-margin-top: 90px; }
 .termos strong { color: var(--texto); }
 .termos h3 { margin: 18px 0 8px; }
+
+/* ---------- Artigos (conteudos.html e páginas de conteúdo) ---------- */
+@media (max-width: 760px) {
+  .menu.menu--simples { position: static; display: flex; flex-direction: row; align-items: center; gap: 14px; padding: 0; border: 0; background: none; }
+  .menu--simples a:not(.botao) { font-size: .9rem; }
+}
+.artigo__trilha { font-size: .85rem; margin-bottom: 14px; }
+.artigo__trilha a { color: var(--verde); text-decoration: none; font-weight: 600; }
+.artigo h1 { line-height: 1.15; }
+.artigo__data { font-size: .85rem; }
+.artigo__resumo p { color: var(--texto); }
+.artigo h2 { margin-top: 38px; }
+.artigo strong { color: var(--texto); }
+.passos-artigo { padding-left: 22px; }
+.passos-artigo li { margin-bottom: 12px; padding-left: 4px; }
+.cta-artigo {
+  margin: 44px 0 10px; padding: 30px 32px; border-radius: var(--raio);
+  background: var(--azul-escuro); color: var(--branco);
+}
+.cta-artigo h2 { color: var(--branco); margin: 6px 0 10px; }
+.pagina-texto .cta-artigo p { color: rgba(255,255,255,.85); }
+.cta-artigo__selo { font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #7fe0c3 !important; margin: 0; }
+.cta-artigo__botoes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.cta-artigo .botao--contorno { color: var(--branco); border-color: rgba(255,255,255,.6); }
+.faq--artigo { max-width: none; }
+.artigo__mais li { margin-bottom: 8px; }
+.artigo__mais a { color: var(--azul); }
+.artigo__aviso { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--borda); font-size: .85rem; }
+.conteudos__lista { display: grid; gap: 16px; margin-top: 28px; }
+.conteudo-card {
+  display: block; padding: 24px 26px; border-radius: var(--raio); text-decoration: none;
+  background: var(--branco); border: 1px solid var(--borda); transition: border-color .2s, transform .2s;
+}
+.conteudo-card:hover { border-color: var(--verde); transform: translateY(-2px); }
+.conteudo-card h2 { margin: 0 0 8px; font-size: 1.25rem; }
+.conteudo-card span { display: inline-block; margin-top: 8px; color: var(--verde); font-weight: 600; }
+.artigo .artigo__resumo h2 { margin-top: 0; }
+.menu--simples .botao { white-space: nowrap; }
+@media (max-width: 480px) {
+  .menu--simples a:not(.botao) { display: none; }
+  .menu--simples .botao { padding: 10px 16px; font-size: .9rem; }
+}

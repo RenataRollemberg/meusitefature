@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Como gerar o lote XML TISS: passo a passo para consultórios | Guias TISS</title>
+  <meta name="description" content="Entenda o que é o lote XML no Padrão TISS da ANS e veja, passo a passo, como gerar o arquivo das guias do mês para enviar no portal do convênio.">
+  <link rel="canonical" href="https://guiaxmltiss.com.br/como-gerar-lote-xml-tiss.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Como gerar o lote XML TISS: passo a passo">
+  <meta property="og:description" content="Entenda o que é o lote XML no Padrão TISS da ANS e veja, passo a passo, como gerar o arquivo das guias do mês para enviar no portal do convênio.">
+  <meta property="og:url" content="https://guiaxmltiss.com.br/como-gerar-lote-xml-tiss.html">
+  <meta property="og:image" content="https://guiaxmltiss.com.br/assets/guias-tiss-compartilhar.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "Article", "headline": "Como gerar o lote XML TISS: passo a passo", "description": "Entenda o que é o lote XML no Padrão TISS da ANS e veja, passo a passo, como gerar o arquivo das guias do mês para enviar no portal do convênio.", "datePublished": "2026-11-03", "dateModified": "2026-11-03", "inLanguage": "pt-BR", "mainEntityOfPage": "https://guiaxmltiss.com.br/como-gerar-lote-xml-tiss.html", "author": {"@type": "Organization", "name": "Remasol Fature"}, "publisher": {"@type": "Organization", "name": "Remasol Fature", "logo": {"@type": "ImageObject", "url": "https://guiaxmltiss.com.br/assets/logo.svg"}}, "image": "https://guiaxmltiss.com.br/assets/guias-tiss-compartilhar.jpg"}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Posso misturar guias de convênios diferentes no mesmo lote?", "acceptedAnswer": {"@type": "Answer", "text": "Não. Cada lote é enviado para uma operadora, então ele reúne guias de um único convênio."}}, {"@type": "Question", "name": "Qual versão do Padrão TISS devo usar?", "acceptedAnswer": {"@type": "Answer", "text": "A que o convênio indicar no portal ou no manual do prestador. Na dúvida, pergunte à operadora antes de enviar."}}, {"@type": "Question", "name": "O que é o hash no final do arquivo?", "acceptedAnswer": {"@type": "Answer", "text": "É um código calculado a partir do conteúdo do lote. A operadora recalcula e compara: se o arquivo foi alterado, o hash não confere e o lote é recusado."}}]}]</script>
+</head>
+<body>
+  <header class="topo">
+    <div class="container topo__linha">
+      <a href="index.html" class="marca">
+        <img src="assets/logo.svg" alt="" width="36" height="36">
+        <span>Remasol <strong>Fature</strong></span>
+      </a>
+      <nav class="menu menu--simples">
+        <a href="conteudos.html">Conteúdos</a>
+        <a href="guias-tiss/entrar.html#criar" class="botao botao--pequeno">Testar grátis</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container pagina-texto artigo">
+    <p class="artigo__trilha"><a href="conteudos.html">Conteúdos</a> · Faturamento de convênios</p>
+    <h1>Como gerar o lote XML TISS: passo a passo</h1>
+    <p class="artigo__data">Atualizado em 3 de novembro de 2026 · Remasol Fature</p>
+    <div class="termos__resumo artigo__resumo"><h2>Resumo</h2><p>O lote XML é o arquivo que reúne as guias de um convênio para envio de uma só vez. Para gerar: cadastre o prestador e o convênio, emita as guias, selecione as pendentes e gere o arquivo na versão do Padrão TISS que a operadora pede.</p></div>
+
+    <h2>O que é o lote XML</h2>
+    <p>No Padrão TISS, definido pela ANS, as guias de atendimento podem ser enviadas ao convênio em um arquivo <strong>XML</strong>. Em vez de digitar guia por guia no portal da operadora, o consultório junta as guias do período em um <strong>lote</strong> e faz um único envio.</p>
+    <p>O arquivo segue uma estrutura fixa: cabeçalho com os dados do prestador e da operadora, número do lote, as guias com beneficiário, procedimentos e valores, e no final um <strong>hash</strong> (uma espécie de "impressão digital" do arquivo) que a operadora usa para conferir se o conteúdo chegou íntegro.</p>
+
+    <h2>Antes de começar: o que você precisa ter em mãos</h2>
+    <ul>
+      <li><strong>Dados do prestador:</strong> nome do profissional, conselho (CRM, por exemplo), número, UF, CBO e, se houver, CNES e CPF ou CNPJ.</li>
+      <li><strong>Dados do convênio:</strong> registro ANS da operadora (6 dígitos, aparece na carteirinha), o seu código de prestador naquele convênio e a <strong>versão do Padrão TISS</strong> que ele aceita.</li>
+      <li><strong>Tabela de valores:</strong> quanto o convênio paga por cada procedimento, pelo código TUSS.</li>
+      <li><strong>Dados de cada atendimento:</strong> beneficiário, número da carteirinha, data, procedimento e, quando exigido, número da autorização (senha).</li>
+    </ul>
+
+    <h2>Passo a passo</h2>
+    <ol class="passos-artigo">
+      <li><strong>Cadastre o prestador.</strong> Esses dados saem em todas as guias e no cabeçalho do lote.</li>
+      <li><strong>Cadastre o convênio</strong> com o registro ANS, o seu código e a versão do Padrão TISS. A versão errada é um dos motivos mais comuns de o portal recusar o arquivo.</li>
+      <li><strong>Monte a tabela de valores</strong> do convênio, com os códigos TUSS e os valores contratados.</li>
+      <li><strong>Emita as guias</strong> (consulta ou SP/SADT) de cada atendimento e confira carteirinha, data, código e valor.</li>
+      <li><strong>Selecione as guias pendentes</strong> do mesmo convênio e gere o lote. Cada lote é de um convênio só.</li>
+      <li><strong>Baixe o arquivo XML</strong> e envie no portal da operadora, na área de envio de lotes ou faturamento eletrônico.</li>
+      <li><strong>Acompanhe o retorno</strong> no portal: protocolo de recebimento, críticas e, depois, o demonstrativo de pagamento.</li>
+    </ol>
+
+    <h2>Cuidados que evitam recusa do arquivo</h2>
+    <ul>
+      <li>Use a <strong>versão do Padrão TISS</strong> indicada pelo convênio. A ANS publica atualizações periódicas, e cada operadora informa quais versões aceita.</li>
+      <li>Não repita o <strong>número do lote</strong> nem o número da guia no prestador, a menos que o convênio permita.</li>
+      <li>Não edite o arquivo XML à mão depois de gerado: qualquer mudança altera o conteúdo e o hash deixa de bater.</li>
+      <li>Guarde uma cópia de cada arquivo enviado e anote o número do protocolo.</li>
+    </ul>
+
+    <aside class="cta-artigo">
+      <p class="cta-artigo__selo">Guias TISS</p>
+      <h2>Gere o lote XML em poucos cliques</h2>
+      <p>O Guias TISS monta as guias no modelo da ANS e gera o lote no Padrão TISS 4.01, 4.02 ou 4.03, com o hash calculado, direto no navegador.</p>
+      <div class="cta-artigo__botoes">
+        <a class="botao" href="guias-tiss/entrar.html#criar">Testar grátis por 7 dias</a>
+        <a class="botao botao--contorno" href="#" data-whatsapp="Olá! Li o artigo no site e quero saber mais do Guias TISS.">Falar no WhatsApp</a>
+      </div>
+    </aside>
+
+    <h2>Perguntas frequentes</h2>
+    <div class="faq faq--artigo"><details><summary>Posso misturar guias de convênios diferentes no mesmo lote?</summary><p>Não. Cada lote é enviado para uma operadora, então ele reúne guias de um único convênio.</p></details><details><summary>Qual versão do Padrão TISS devo usar?</summary><p>A que o convênio indicar no portal ou no manual do prestador. Na dúvida, pergunte à operadora antes de enviar.</p></details><details><summary>O que é o hash no final do arquivo?</summary><p>É um código calculado a partir do conteúdo do lote. A operadora recalcula e compara: se o arquivo foi alterado, o hash não confere e o lote é recusado.</p></details></div>
+
+    <h2>Leia também</h2>
+    <ul class="artigo__mais"><li><a href="guia-sp-sadt.html">Guia SP/SADT: o que é, quando usar e como preencher</a></li><li><a href="como-evitar-glosas.html">Como evitar glosas por erro de preenchimento nas guias TISS</a></li></ul>
+    <p class="artigo__aviso">Este conteúdo é informativo. Regras de autorização, prazos e versões aceitas variam conforme a operadora: confira sempre o manual do prestador e o seu contrato com o convênio.</p>
+  </main>
+
+  <footer class="rodape">
+    <div class="container rodape__linha">
+      <span>© <span id="ano"></span> Remasol Fature · Guias TISS</span>
+      <a href="conteudos.html">Conteúdos</a>
+      <a href="termos.html">Termos de uso</a>
+      <a href="privacidade.html">Política de privacidade</a>
+    </div>
+  </footer>
+  <script src="js/config.js?v=3"></script>
+  <script src="js/main.js?v=3"></script>
+</body>
+</html>
