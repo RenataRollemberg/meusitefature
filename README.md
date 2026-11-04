@@ -18,7 +18,8 @@ Site institucional da **Remasol Fature**.
 - **Planos e Faturista (`guias-tiss/js/planos.js`):** Básico R$ 70 (1 médico, 1 convênio), Básico 2 R$ 130
   (1 médico, 3 convênios), Clínica R$ 280 (5 médicos, 10 convênios), Clínica Premium R$ 510 (10 médicos,
   15 convênios). O serviço extra **Faturista** tem valor combinado com cada cliente: pode incluir a
-  plataforma ou ser somado ao plano. O limite de convênios já é aplicado no app.
+  plataforma ou ser somado ao plano. Os limites de médicos e convênios são aplicados no app; no Faturista, as
+  quantidades liberadas no painel substituem as do plano (vazio = segue o plano; sem plano = sem limite).
 - **Painel da Remasol (`guias-tiss/admin.html`):** entre com remasolfaturetiss@gmail.com (e-mail confirmado)
   para cadastrar cada cliente pelo e-mail: plano, situação (período grátis, ativo, suspenso) e valor do
   Faturista. Na primeira entrada, o médico vê o plano e o valor combinado e confirma.

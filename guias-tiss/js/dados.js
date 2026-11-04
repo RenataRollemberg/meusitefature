@@ -143,16 +143,36 @@ const Db = (function () {
         councilUf: '33',
         cbos: ''
       },
+      // Médicos da conta. Cada um tem os dados de "settings" e, por convênio, pode ter identificação
+      // própria: doctors[].byOperator = { <id do convênio>: { idType, code } }. "settings" fica como
+      // cópia do primeiro médico (usada como padrão de UF nos formulários).
+      doctors: [],
       // Cada convênio tem a sua tabela de valores: operators[].prices = [{ tableCode, code, description, value }]
       operators: [],
       patients: [],
       guides: [],
       lotes: [],
-      seq: { operator: 0, patient: 0, guide: 0, lote: 0 }
+      seq: { operator: 0, patient: 0, guide: 0, lote: 0, doctor: 0 }
     }
   }
 
-  let state = empty()
+  // Dados de antes da lista de médicos: o Prestador vira o primeiro médico e as guias passam a ser dele.
+  function migrateDoctors(out) {
+    if (!Array.isArray(out.doctors) || !out.doctors.length) {
+      out.doctors = [Object.assign({ id: 1, byOperator: {} }, out.settings)]
+    }
+    out.seq = out.seq || {}
+    out.seq.doctor = Math.max(out.seq.doctor || 0, ...out.doctors.map(function (d) { return d.id }))
+    out.guides.forEach(function (g) { if (!g.doctorId) g.doctorId = out.doctors[0].id })
+  }
+
+  function fresh() {
+    const out = empty()
+    migrateDoctors(out)
+    return out
+  }
+
+  let state = fresh()
   let storageOk = true
 
   // Dados da primeira versão tinham uma tabela de procedimentos separada, com valor padrão e
@@ -173,6 +193,7 @@ const Db = (function () {
     }
     delete out.procedures
     if (out.seq) delete out.seq.procedure
+    migrateDoctors(out)
     return out
   }
 
@@ -232,7 +253,7 @@ const Db = (function () {
       save()
     },
     reset: function () {
-      state = empty()
+      state = fresh()
       save()
     }
   }
@@ -243,10 +264,72 @@ const Db = (function () {
 // ---------------------------------------------------------------------------
 
 const Repo = {
-  // ----- Prestador
-  saveSettings: function (input) {
-    Db.state.settings = Object.assign({}, Db.state.settings, input)
+  // ----- Médicos (Prestador)
+  doctors: function () {
+    return Db.state.doctors.slice()
+  },
+  doctor: function (id) {
+    return Db.byId(Db.state.doctors, id)
+  },
+  doctorOf: function (guide) {
+    return Repo.doctor(guide.doctorId) || Db.state.doctors[0]
+  },
+  syncSettings: function () {
+    const first = Object.assign({}, Db.state.doctors[0])
+    delete first.id
+    delete first.byOperator
+    Db.state.settings = first
+  },
+  saveDoctor: function (id, input) {
+    if (!input.professionalName.trim()) throw new Error('Informe o nome do profissional.')
+    // O médico fica vinculado ao CPF, mesmo quando o convênio trabalha com CNPJ.
+    const cpf = String(input.contractorCpf || '').replace(/\D/g, '')
+    if (cpf.length !== 11) throw new Error('Informe o CPF do médico (11 dígitos).')
+    const same = Db.state.doctors.find(function (d) { return d.id !== id && String(d.contractorCpf || '').replace(/\D/g, '') === cpf })
+    if (same) throw new Error('Este CPF já está cadastrado para ' + (same.professionalName || 'outro médico') + '.')
+    if (id) {
+      Object.assign(Repo.doctor(id), input)
+    } else {
+      // Limite de médicos do plano ou liberado no painel (só com o login ligado; ver js/acesso.js)
+      if (window.Assinatura) window.Assinatura.checarNovoMedico(Db.state.doctors.length)
+      Db.state.doctors.push(Object.assign({ id: Db.nextId('doctor') }, input))
+    }
+    Repo.syncSettings()
     Db.save()
+  },
+  deleteDoctor: function (id) {
+    if (Db.state.doctors.length === 1) throw new Error('A conta precisa ter ao menos um médico.')
+    if (Db.state.guides.some(function (g) { return g.doctorId === id })) {
+      throw new Error('Este médico possui guias cadastradas e não pode ser excluído.')
+    }
+    Db.state.doctors = Db.state.doctors.filter(function (d) { return d.id !== id })
+    Repo.syncSettings()
+    Db.save()
+  },
+  // Convênio como ele vale para este médico: a identificação própria do médico, se houver,
+  // substitui a do cadastro do convênio.
+  operatorFor: function (operatorId, doctor) {
+    const operator = Repo.operator(operatorId)
+    if (!operator || !doctor) return operator
+    const own = (doctor.byOperator && doctor.byOperator[operatorId]) || {}
+    const out = Object.assign({}, operator)
+    if (own.idType) out.contractorIdType = own.idType
+    if (own.code) out.providerCode = own.code
+    // Convênio por CNPJ e médico sem CNPJ: identifica pelo CPF do médico.
+    const digits = function (v) { return String(v || '').replace(/\D/g, '') }
+    if (!own.idType && out.contractorIdType === 'cnpj' && !digits(doctor.contractorCnpj) && digits(doctor.contractorCpf)) {
+      out.contractorIdType = 'cpf'
+    }
+    return out
+  },
+  // Quem recebe do convênio nesta guia. Guias de um lote precisam ter o mesmo contratado.
+  contractorKey: function (guide) {
+    const doctor = Repo.doctorOf(guide)
+    const operator = Repo.operatorFor(guide.operatorId, doctor)
+    const digits = function (v) { return String(v || '').replace(/\D/g, '') }
+    if (operator.contractorIdType === 'cpf') return 'cpf:' + digits(doctor.contractorCpf)
+    if (operator.contractorIdType === 'cnpj') return 'cnpj:' + digits(doctor.contractorCnpj)
+    return 'codigo:' + String(operator.providerCode || '').trim()
   },
 
   // ----- Convênios
@@ -393,6 +476,7 @@ const Repo = {
     return Db.state.guides
       .filter(function (g) {
         if (f.operatorId && g.operatorId !== f.operatorId) return false
+        if (f.doctorId && g.doctorId !== f.doctorId) return false
         if (f.status === 'pending' && g.loteId !== null) return false
         if (f.status === 'batched' && g.loteId === null) return false
         if (f.guideType && g.guideType !== f.guideType) return false
@@ -458,6 +542,7 @@ const Repo = {
     }
     const data = Db.clone(input)
     data.providerGuideNumber = number
+    if (!Repo.doctor(data.doctorId)) data.doctorId = Db.state.doctors[0].id
     data.cardNumber = data.cardNumber.trim()
     if (data.guideType === 'sadt') {
       // A SP/SADT pode ter só outras despesas (ex.: materiais do especialista numa internação).
@@ -562,6 +647,7 @@ const Repo = {
     }
     const input = {
       guideType: 'sadt',
+      doctorId: guide.doctorId,
       operatorId: guide.operatorId,
       patientId: guide.patientId,
       providerGuideNumber: linked ? linked.providerGuideNumber : Repo.nextProviderGuideNumber(),
@@ -625,13 +711,15 @@ const Repo = {
   },
   // Valida as guias antes de gerar: devolve a lista de problemas (vazia = tudo certo).
   checkGuides: function (guideIds) {
-    const settings = Db.state.settings
     let errors = []
+    let semNome = false
     guideIds.forEach(function (id) {
       const g = Repo.guide(id)
-      errors = errors.concat(XmlTiss.validateGuide(g, Repo.operator(g.operatorId), settings, Repo.patient(g.patientId)))
+      const doctor = Repo.doctorOf(g)
+      if (!doctor.professionalName.trim()) semNome = true
+      errors = errors.concat(XmlTiss.validateGuide(g, Repo.operatorFor(g.operatorId, doctor), doctor, Repo.patient(g.patientId)))
     })
-    if (!settings.professionalName.trim()) errors.unshift('Informe o nome do profissional em Prestador.')
+    if (semNome) errors.unshift('Informe o nome do profissional em Prestador.')
     return errors
   },
   createLote: function (guideIds) {
@@ -658,6 +746,9 @@ const Repo = {
       err.details = errors
       throw err
     }
+    if (guides.some(function (g) { return Repo.contractorKey(g) !== Repo.contractorKey(guides[0]) })) {
+      throw new Error('As guias selecionadas têm contratados diferentes (quem recebe do convênio). Gere um lote para cada contratado: use o filtro de médico em Guias.')
+    }
     // Contador por convênio: um número de lote nunca é reutilizado, mesmo após excluir um lote.
     const operator = Repo.operator(operatorId)
     operator.lastLoteNumber = (operator.lastLoteNumber || 0) + 1
@@ -676,12 +767,18 @@ const Repo = {
     return lote
   },
   loteXml: function (lote) {
+    const guides = Repo.loteGuides(lote.id)
+    // O cabeçalho do lote identifica o contratado, que é o mesmo em todas as guias.
+    const first = guides[0] ? Repo.doctorOf(guides[0]) : Db.state.doctors[0]
     return XmlTiss.buildLoteXml({
       lote: lote,
-      guides: Repo.loteGuides(lote.id),
-      operator: Repo.operator(lote.operatorId),
-      settings: Db.state.settings,
-      doctorName: Db.state.settings.professionalName
+      guides: guides,
+      operator: Repo.operatorFor(lote.operatorId, first),
+      settings: first,
+      resolve: function (g) {
+        const doctor = Repo.doctorOf(g)
+        return { operator: Repo.operatorFor(g.operatorId, doctor), settings: doctor, doctorName: doctor.professionalName }
+      }
     })
   },
   setLoteStatus: function (id, status) {

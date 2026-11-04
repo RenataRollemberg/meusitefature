@@ -20,16 +20,26 @@
   window.Assinatura = {
     cliente: function () { return cliente },
     limites: function () {
-      const plano = cliente && Planos.get(cliente.plano)
-      return plano ? { medicos: plano.medicos, convenios: plano.convenios, plano: plano } : null
+      return cliente ? Planos.limites(cliente) : null
     },
     // Chamado antes de cadastrar um convênio novo.
     checarNovoConvenio: function (quantidadeAtual) {
       const l = window.Assinatura.limites()
-      if (!l || quantidadeAtual < l.convenios) return
-      throw new Error('O plano ' + l.plano.nome + ' permite ' + l.convenios + (l.convenios === 1 ? ' convênio' : ' convênios') +
-        '. Para cadastrar mais, fale com a Remasol e troque de plano.')
+      if (!l || l.convenios === null || quantidadeAtual < l.convenios) return
+      throw new Error(quemPermite(l) + ' permite ' + l.convenios + (l.convenios === 1 ? ' convênio' : ' convênios') +
+        '. Para cadastrar mais, fale com a Remasol.')
+    },
+    // Chamado antes de cadastrar um médico novo.
+    checarNovoMedico: function (quantidadeAtual) {
+      const l = window.Assinatura.limites()
+      if (!l || l.medicos === null || quantidadeAtual < l.medicos) return
+      throw new Error(quemPermite(l) + ' permite ' + l.medicos + (l.medicos === 1 ? ' médico' : ' médicos') +
+        '. Para cadastrar mais, fale com a Remasol.')
     }
+  }
+
+  function quemPermite(l) {
+    return l.plano && !l.personalizado ? 'O plano ' + l.plano.nome : 'A sua assinatura'
   }
 
   function irParaLogin() { location.replace('entrar.html') }
@@ -72,7 +82,8 @@
       ? '<div class="assinatura-item"><span>Plano</span><strong>' + esc(plano.nome) + '</strong><small>' + esc(Planos.limitesTexto(plano)) + '</small></div>'
       : '') +
       (Planos.faturistaAtivo(c)
-        ? '<div class="assinatura-item"><span>Serviço extra</span><strong>' + esc(Planos.FATURISTA.nome) + '</strong><small>' + esc(Planos.FATURISTA.descricao) + '</small></div>'
+        ? '<div class="assinatura-item"><span>Serviço extra</span><strong>' + esc(Planos.FATURISTA.nome) + '</strong><small>' + esc(Planos.FATURISTA.descricao) +
+          (Planos.limites(c) && Planos.limites(c).personalizado ? ' Liberado: ' + esc(Planos.limitesTexto(Planos.limites(c))) + '.' : '') + '</small></div>'
         : '') +
       contaHtml(c)
   }

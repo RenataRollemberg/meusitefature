@@ -328,9 +328,9 @@ const Impressao = (function () {
   }
 
   function guideHtml(guide) {
-    const operator = Repo.operator(guide.operatorId)
+    const settings = Repo.doctorOf(guide)
+    const operator = Repo.operatorFor(guide.operatorId, settings)
     const patient = Repo.patient(guide.patientId) || { name: '' }
-    const settings = Db.state.settings
     const isSadt = guide.guideType === 'sadt' && guide.sadt
     const isHon = guide.guideType === 'honorarios' && guide.hon
     return (

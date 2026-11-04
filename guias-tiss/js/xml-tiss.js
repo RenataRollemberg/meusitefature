@@ -405,12 +405,13 @@ const XmlTiss = (function () {
     }
   }
 
-  // input: { lote, guides, operator, settings, doctorName } → { xml, hash, fileName }
+  // input: { lote, guides, operator, settings, resolve } → { xml, hash, fileName }
+  // operator e settings identificam o contratado no cabeçalho; resolve(guia) devolve
+  // { operator, settings, doctorName } do médico daquela guia.
   function buildLoteXml(input) {
     const lote = input.lote
     const operator = input.operator
     const settings = input.settings
-    const doctorName = input.doctorName
     const version = operator.tissVersion || TISS.DEFAULT_VERSION
     const dt = transactionDateTime(lote.createdAt)
 
@@ -427,9 +428,10 @@ const XmlTiss = (function () {
     ])
 
     const guideNodes = input.guides.map(function (g) {
-      if (g.guideType === 'sadt') return sadtGuide(g, operator, settings, doctorName)
-      if (g.guideType === 'honorarios') return honorGuide(g, operator, settings, doctorName)
-      return consultaGuide(g, operator, settings, doctorName)
+      const r = input.resolve(g)
+      if (g.guideType === 'sadt') return sadtGuide(g, r.operator, r.settings, r.doctorName)
+      if (g.guideType === 'honorarios') return honorGuide(g, r.operator, r.settings, r.doctorName)
+      return consultaGuide(g, r.operator, r.settings, r.doctorName)
     })
 
     const body = group('prestadorParaOperadora', [

@@ -150,7 +150,8 @@
             const fat = Planos.faturistaAtivo(c)
             return '<tr><td><strong>' + esc(c.nome || '—') + '</strong><br><span class="mono muted">' + esc(c.id) + '</span></td>' +
               '<td>' + (plano ? esc(plano.nome) : '<span class="muted">—</span>') + '</td>' +
-              '<td>' + (fat ? Planos.money(c.faturista.valor) + '<br><span class="muted">' + (c.faturista.incluiPlataforma ? 'inclui plataforma' : 'somado ao plano') + '</span>' : '<span class="muted">—</span>') + '</td>' +
+              '<td>' + (fat ? Planos.money(c.faturista.valor) + '<br><span class="muted">' + (c.faturista.incluiPlataforma ? 'inclui plataforma' : 'somado ao plano') + '</span>' +
+                (Planos.limites(c) && Planos.limites(c).personalizado ? '<br><span class="muted">' + esc(Planos.limitesTexto(Planos.limites(c))) + '</span>' : '') : '<span class="muted">—</span>') + '</td>' +
               '<td class="num">' + Planos.money(Planos.cobranca(c).total) + '</td>' +
               '<td>' + statusTag(c) + (c.status === 'teste' && c.testeAte ? '<br><span class="muted">até ' + esc(dataTexto(c.testeAte)) + '</span>' : '') + '</td>' +
               '<td>' + (c.aceitoEm ? esc(dataTexto(c.aceitoEm)) : c.origem === 'site' ? '<span class="muted">criou sozinho</span>' : '<span class="muted">ainda não entrou</span>') + '</td>' +
@@ -210,6 +211,8 @@
       '<div class="field c8"><span>Como cobrar</span>' +
       '<label class="check"><input type="radio" name="fat-modo" value="inclui"' + (fat.incluiPlataforma !== false ? ' checked' : '') + '>O valor já inclui a plataforma (cobra só o Faturista)</label>' +
       '<label class="check"><input type="radio" name="fat-modo" value="soma"' + (fat.incluiPlataforma === false ? ' checked' : '') + '>Somar ao valor do plano</label></div>' +
+      '<label class="field c4">Médicos liberados<input id="fat-medicos" class="code" type="number" min="1" step="1" inputmode="numeric" value="' + esc(fat.medicos) + '"><span class="hint" id="fat-medicos-hint"></span></label>' +
+      '<label class="field c4">Convênios liberados<input id="fat-convenios" class="code" type="number" min="1" step="1" inputmode="numeric" value="' + esc(fat.convenios) + '"><span class="hint" id="fat-convenios-hint"></span></label>' +
       '</div>' +
       '<div class="form-section">Pagamento</div><div class="grid">' +
       '<label class="field c12">Link de assinatura do Mercado Pago (opcional)<input id="link" type="url" placeholder="https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=…" value="' + esc(c.linkPagamento) + '" list="links-prontos">' +
@@ -224,6 +227,13 @@
       '<button class="btn" type="button" id="voltar">Voltar</button>' +
       (novo ? '' : '<button class="btn danger" type="button" id="excluir">Excluir cadastro</button>') + '</div></form>'
 
+    // Vazio = null (segue o plano). Inválido = NaN, recusado ao salvar.
+    function quantidade(texto) {
+      const limpo = String(texto).trim()
+      if (!limpo) return null
+      return /^[1-9]\d*$/.test(limpo) ? Number(limpo) : NaN
+    }
+
     function ler() {
       const valorTexto = $('#fat-valor').value
       return {
@@ -237,7 +247,9 @@
           ativo: $('#fat-ativo').checked,
           valor: parseDinheiro(valorTexto),
           valorTexto: valorTexto,
-          incluiPlataforma: $('input[name="fat-modo"]:checked').value === 'inclui'
+          incluiPlataforma: $('input[name="fat-modo"]:checked').value === 'inclui',
+          medicos: quantidade($('#fat-medicos').value),
+          convenios: quantidade($('#fat-convenios').value)
         }
       }
     }
@@ -250,9 +262,17 @@
       $('#teste-wrap').hidden = d.status !== 'teste'
       const previa = { plano: d.plano, faturista: Object.assign({}, d.faturista, { valor: Number.isNaN(d.faturista.valor) ? 0 : d.faturista.valor }) }
       const conta = Planos.cobranca(previa)
+      const planoEscolhido = Planos.get(d.plano)
+      const vazio = function (campo, nome) {
+        return 'Vazio = ' + (planoEscolhido ? planoEscolhido[campo] + ' (do plano)' : nome + ' sem limite')
+      }
+      $('#fat-medicos-hint').textContent = vazio('medicos', 'médicos')
+      $('#fat-convenios-hint').textContent = vazio('convenios', 'convênios')
+      const limitesPrevia = Planos.limites(previa)
       $('#previa').innerHTML = '<span class="label">O cliente vai ver</span>' + (conta.linhas.length
         ? '<table><tbody>' + conta.linhas.map(function (l) { return '<tr><td>' + esc(l.texto) + '</td><td>' + Planos.money(l.valor) + '</td></tr>' }).join('') +
-          '</tbody><tfoot><tr><td>Total por mês</td><td>' + Planos.money(conta.total) + '</td></tr></tfoot></table>'
+          '</tbody><tfoot><tr><td>Total por mês</td><td>' + Planos.money(conta.total) + '</td></tr></tfoot></table>' +
+          (limitesPrevia ? '<p class="muted">Pode cadastrar: ' + esc(Planos.limitesTexto(limitesPrevia)) + '</p>' : '<p class="muted">Pode cadastrar: médicos e convênios sem limite</p>')
         : '<p class="muted">Escolha um plano ou marque o serviço Faturista.</p>')
     }
     $('#f').addEventListener('input', atualizar)
@@ -270,6 +290,7 @@
       if (novo && clientes.some(function (x) { return x.id === email })) return (msg.innerHTML = erroHtml({ message: 'Este e-mail já está cadastrado. Use "Editar" na lista.' }))
       if (d.faturista.ativo && (Number.isNaN(d.faturista.valor) || d.faturista.valor <= 0)) return (msg.innerHTML = erroHtml({ message: 'Informe o valor combinado do Faturista.' }))
       if (d.faturista.ativo && !d.faturista.incluiPlataforma && !d.plano) return (msg.innerHTML = erroHtml({ message: 'Para somar o Faturista ao plano, escolha um plano.' }))
+      if (d.faturista.ativo && (Number.isNaN(d.faturista.medicos) || Number.isNaN(d.faturista.convenios))) return (msg.innerHTML = erroHtml({ message: 'Médicos e convênios liberados precisam ser números inteiros a partir de 1. Deixe vazio para seguir o plano.' }))
       if (d.linkPagamento && !/^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com\.br|mpago\.la|mpago\.li)\//i.test(d.linkPagamento)) return (msg.innerHTML = erroHtml({ message: 'O link de pagamento precisa ser do Mercado Pago (mercadopago.com.br ou mpago.la).' }))
       if (!d.plano && !d.faturista.ativo) return (msg.innerHTML = erroHtml({ message: 'Escolha um plano ou marque o serviço Faturista.' }))
 
@@ -282,7 +303,7 @@
         observacao: d.observacao,
         linkPagamento: d.linkPagamento,
         faturista: d.faturista.ativo
-          ? { ativo: true, valor: Math.round(d.faturista.valor * 100) / 100, incluiPlataforma: d.faturista.incluiPlataforma }
+          ? { ativo: true, valor: Math.round(d.faturista.valor * 100) / 100, incluiPlataforma: d.faturista.incluiPlataforma, medicos: d.faturista.medicos, convenios: d.faturista.convenios }
           : { ativo: false },
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
       }

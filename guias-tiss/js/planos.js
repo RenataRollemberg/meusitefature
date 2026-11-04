@@ -47,12 +47,32 @@ const Planos = (function () {
     return n + ' ' + (n === 1 ? um : varios)
   }
 
-  function limitesTexto(plano) {
-    return plural(plano.medicos, 'médico', 'médicos') + ' · ' + plural(plano.convenios, 'convênio', 'convênios')
+  // Aceita um plano ou o resultado de limites(). null = sem limite.
+  function limitesTexto(l) {
+    return (l.medicos == null ? 'médicos sem limite' : plural(l.medicos, 'médico', 'médicos')) + ' · ' +
+      (l.convenios == null ? 'convênios sem limite' : plural(l.convenios, 'convênio', 'convênios'))
   }
 
   function faturistaAtivo(cliente) {
     return !!(cliente && cliente.faturista && cliente.faturista.ativo)
+  }
+
+  // Limites que valem para o cliente. No Faturista, a Remasol pode liberar as quantidades no painel;
+  // o que ela deixar vazio segue o plano. Sem plano e sem quantidade = sem limite (null).
+  function limites(cliente) {
+    const plano = get(cliente && cliente.plano)
+    const fat = faturistaAtivo(cliente) ? cliente.faturista : null
+    const medicosFat = fat && Number(fat.medicos) > 0 ? Number(fat.medicos) : null
+    const conveniosFat = fat && Number(fat.convenios) > 0 ? Number(fat.convenios) : null
+    const medicos = medicosFat !== null ? medicosFat : plano ? plano.medicos : null
+    const convenios = conveniosFat !== null ? conveniosFat : plano ? plano.convenios : null
+    if (medicos === null && convenios === null) return null
+    return {
+      medicos: medicos,
+      convenios: convenios,
+      plano: plano,
+      personalizado: medicosFat !== null || conveniosFat !== null
+    }
   }
 
   // Quanto o cliente paga por mês, com as partes da conta para mostrar na tela.
@@ -92,6 +112,7 @@ const Planos = (function () {
     get: get,
     money: money,
     limitesTexto: limitesTexto,
+    limites: limites,
     faturistaAtivo: faturistaAtivo,
     cobranca: cobranca
   }

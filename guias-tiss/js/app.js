@@ -164,7 +164,8 @@
     [/^beneficiario\/(novo|\d+)$/, 'beneficiarios', function (m) { viewPatientForm(m[1] === 'novo' ? null : Number(m[1])) }],
     [/^convenios$/, 'convenios', viewOperators],
     [/^convenio\/(novo|\d+)$/, 'convenios', function (m) { viewOperatorForm(m[1] === 'novo' ? null : Number(m[1])) }],
-    [/^prestador$/, 'prestador', viewSettings],
+    [/^prestador$/, 'prestador', viewDoctors],
+    [/^prestador\/(novo|\d+)$/, 'prestador', function (m) { viewDoctorForm(m[1] === 'novo' ? null : Number(m[1])) }],
     [/^backup$/, 'backup', viewBackup]
   ]
 
@@ -190,7 +191,19 @@
   // Guias
   // ---------------------------------------------------------------------------
 
-  const guideFilter = { operatorId: '', status: 'pending', guideType: '', query: '' }
+  const guideFilter = { operatorId: '', doctorId: '', status: 'pending', guideType: '', query: '' }
+
+  // Com um médico só, a tela de guias fica como sempre foi.
+  function manyDoctors() {
+    return Repo.doctors().length > 1
+  }
+
+  function doctorOptions(selected, placeholder) {
+    return options(Repo.doctors().map(function (d) { return { value: d.id, label: d.professionalName || 'Médico sem nome' } }), selected, placeholder)
+  }
+
+  // A próxima guia já vem com o último médico usado.
+  let lastDoctorId = null
 
   function firstSteps() {
     const s = Db.state.settings
@@ -211,7 +224,9 @@
 
   function viewGuides() {
     const operatorId = guideFilter.operatorId ? Number(guideFilter.operatorId) : null
-    const guides = Repo.guides({ operatorId: operatorId, status: guideFilter.status, guideType: guideFilter.guideType, query: guideFilter.query })
+    const showDoctor = manyDoctors()
+    const doctorId = showDoctor && guideFilter.doctorId ? Number(guideFilter.doctorId) : null
+    const guides = Repo.guides({ operatorId: operatorId, doctorId: doctorId, status: guideFilter.status, guideType: guideFilter.guideType, query: guideFilter.query })
     const rows = guides.map(function (g) {
       const patient = Repo.patient(g.patientId)
       const operator = Repo.operator(g.operatorId)
@@ -222,6 +237,7 @@
         '<td><span class="tag' + (g.guideType === 'sadt' ? ' teal' : g.guideType === 'honorarios' ? ' amber' : '') + '">' + guideTypeLabel(g.guideType) + '</span></td>' +
         '<td class="nowrap">' + Fmt.date(g.serviceDate) + '</td>' +
         '<td>' + esc(patient ? patient.name : '—') + '</td>' +
+        (showDoctor ? '<td>' + esc(Repo.doctorOf(g).professionalName) + '</td>' : '') +
         '<td>' + esc(operator ? operator.name : '—') + '</td>' +
         '<td class="num">' + Fmt.money(Calc.guideTotal(g)) + '</td>' +
         '<td>' + (lote ? '<a href="#lote/' + lote.id + '" class="tag gray">Lote ' + esc(lote.number) + '</a>' : '<span class="tag amber">Pendente</span>') + '</td>' +
@@ -240,6 +256,7 @@
       firstSteps() +
       '<div class="filters">' +
       '<label class="field" style="flex:2 1 280px">Buscar<input id="f-query" type="search" placeholder="Nº da guia, beneficiário, CPF, carteirinha ou código…" value="' + esc(guideFilter.query) + '"></label>' +
+      (showDoctor ? '<label class="field">Médico<select id="f-doctor">' + doctorOptions(guideFilter.doctorId, 'Todos') + '</select></label>' : '') +
       '<label class="field">Convênio<select id="f-operator">' + operatorOptions(guideFilter.operatorId, 'Todos') + '</select></label>' +
       '<label class="field">Situação<select id="f-status">' +
       options([{ value: 'pending', label: 'Pendentes (sem lote)' }, { value: 'batched', label: 'Em lote' }, { value: 'all', label: 'Todas' }], guideFilter.status) +
@@ -251,7 +268,7 @@
       '<div class="table-wrap">' +
       (guides.length
         ? '<table class="list"><thead><tr><th><input type="checkbox" id="select-all" aria-label="Selecionar todas as pendentes"></th>' +
-          '<th>Nº</th><th>Tipo</th><th>Data</th><th>Beneficiário</th><th>Convênio</th><th class="num">Valor</th><th>Lote</th><th></th></tr></thead>' +
+          '<th>Nº</th><th>Tipo</th><th>Data</th><th>Beneficiário</th>' + (showDoctor ? '<th>Médico</th>' : '') + '<th>Convênio</th><th class="num">Valor</th><th>Lote</th><th></th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table>'
         : '<p class="empty">' + (guideFilter.query
           ? 'Nenhuma guia encontrada para “' + esc(guideFilter.query) + '”' + (guideFilter.status !== 'all' ? ' nesta situação. <button class="link-btn" id="search-all">Buscar em todas</button>' : '.')
@@ -273,6 +290,7 @@
     if ($('#search-all')) {
       $('#search-all').addEventListener('click', function () { guideFilter.status = 'all'; viewGuides() })
     }
+    if ($('#f-doctor')) $('#f-doctor').addEventListener('change', function (e) { guideFilter.doctorId = e.target.value; viewGuides() })
     $('#f-operator').addEventListener('change', function (e) { guideFilter.operatorId = e.target.value; viewGuides() })
     $('#f-status').addEventListener('change', function (e) { guideFilter.status = e.target.value; viewGuides() })
     $('#f-type').addEventListener('change', function (e) { guideFilter.guideType = e.target.value; viewGuides() })
@@ -403,6 +421,7 @@
     const consulta = Repo.priceFor(operatorId, '22', CONSULTATION_CODE)
     return {
       guideType: type,
+      doctorId: Repo.doctor(lastDoctorId) ? lastDoctorId : Repo.doctors()[0].id,
       sadt: type === 'sadt' ? emptySadt() : null,
       hon: type === 'honorarios' ? emptyHon() : null,
       operatorId: operatorId,
@@ -558,6 +577,9 @@
 
     const ident =
       '<div class="form-section">Identificação</div><div class="grid">' +
+      (manyDoctors()
+        ? '<label class="field c12">Médico executante <span class="req">*</span><select id="g-doctor"' + (g.linkedHonorId ? ' disabled' : '') + '>' + doctorOptions(g.doctorId) + '</select></label>'
+        : '') +
       '<label class="field c4">Convênio <span class="req">*</span><select id="g-operator">' + operatorOptions(g.operatorId, 'Selecione…') + '</select></label>' +
       '<label class="field c4">Nº da guia no prestador <span class="req">*</span><input class="code" id="g-number" maxlength="20" value="' + esc(g.providerGuideNumber) + '"></label>' +
       '<label class="field c4">Nº da guia no convênio<input class="code" id="g-opnumber" maxlength="20" value="' + esc(g.operatorGuideNumber) + '"></label>' +
@@ -1045,6 +1067,7 @@
         const val = function (sel, fallback) { const el = $(sel); return el ? el.value : fallback }
         const input = {
           guideType: isSadt ? 'sadt' : isHon ? 'honorarios' : 'consulta',
+          doctorId: $('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId,
           operatorId: Number($('#g-operator').value) || null,
           patientId: Number($('#g-patient').value) || null,
           providerGuideNumber: $('#g-number').value,
@@ -1156,6 +1179,7 @@
         if (isHon) Repo.checkHonorExpenses(id)
         const saved = Repo.saveGuide(id, input)
         const linkedSaved = isHon ? Repo.syncHonorExpenses(saved) : null
+        lastDoctorId = saved.doctorId
         toast('Guia ' + saved.providerGuideNumber + ' salva.' +
           (linkedSaved ? ' Despesas na SP/SADT nº ' + linkedSaved.providerGuideNumber + '.' : ''))
         if (andPrint) {
@@ -1224,11 +1248,11 @@
       '<div class="card"><h2>Arquivo</h2><p class="mono" style="margin-top:6px;word-break:break-all">' + esc(r.fileName) + '</p>' +
       '<p class="muted" style="margin-top:4px">Padrão TISS ' + esc(op.tissVersion) + ' · hash ' + '<span class="mono">' + esc(r.hash) + '</span></p>' +
       '<details style="margin-top:10px"><summary>Ver conteúdo do XML</summary><pre class="xml">' + esc(r.xml) + '</pre></details></div>' +
-      '<div class="card"><h2>Guias do lote</h2><div class="table-wrap" style="margin-top:12px"><table class="list"><thead><tr><th>Nº</th><th>Data</th><th>Beneficiário</th><th>Carteirinha</th><th class="num">Valor</th><th></th></tr></thead><tbody>' +
+      '<div class="card"><h2>Guias do lote</h2><div class="table-wrap" style="margin-top:12px"><table class="list"><thead><tr><th>Nº</th><th>Data</th><th>Beneficiário</th>' + (manyDoctors() ? '<th>Médico</th>' : '') + '<th>Carteirinha</th><th class="num">Valor</th><th></th></tr></thead><tbody>' +
       guides.map(function (g) {
         const p = Repo.patient(g.patientId)
         return '<tr><td class="mono">' + esc(g.providerGuideNumber) + '</td><td class="nowrap">' + Fmt.date(g.serviceDate) + '</td>' +
-          '<td>' + esc(p ? p.name : '—') + '</td><td class="mono">' + esc(g.cardNumber) + '</td>' +
+          '<td>' + esc(p ? p.name : '—') + '</td>' + (manyDoctors() ? '<td>' + esc(Repo.doctorOf(g).professionalName) + '</td>' : '') + '<td class="mono">' + esc(g.cardNumber) + '</td>' +
           '<td class="num">' + Fmt.money(Calc.guideTotal(g)) + '</td>' +
           '<td class="row-actions"><button class="link-btn" data-print="' + g.id + '">Imprimir</button></td></tr>'
       }).join('') + '</tbody></table></div></div>'
@@ -1443,10 +1467,53 @@
   // Prestador
   // ---------------------------------------------------------------------------
 
-  function viewSettings() {
-    const s = Db.state.settings
+  function viewDoctors() {
+    const doctors = Repo.doctors()
+    // Conta nova: abre direto o formulário do primeiro médico.
+    if (doctors.length === 1 && !doctors[0].professionalName) return viewDoctorForm(doctors[0].id)
+    const limites = window.Assinatura ? window.Assinatura.limites() : null
+    const max = limites ? limites.medicos : null
+    const full = max !== null && doctors.length >= max
     app.innerHTML =
-      '<div class="page-head"><div><h1>Prestador</h1><p class="sub">Dados de quem executa o atendimento. Saem em todas as guias e nos lotes XML.</p></div></div>' +
+      '<div class="page-head"><div><h1>Prestador</h1><p class="sub">Médicos da conta. Os dados de cada um saem nas guias dele e nos lotes XML.' +
+      (max !== null ? ' Usando <strong>' + doctors.length + ' de ' + max + '</strong> ' + (max === 1 ? 'médico' : 'médicos') + '.' : '') + '</p></div>' +
+      '<div class="actions">' + (full ? '' : '<a class="btn solid" href="#prestador/novo">Adicionar médico</a>') + '</div></div>' +
+      (full ? '<div class="alert warn">Sua assinatura chegou ao limite de médicos. Para liberar mais, fale com a Remasol.</div>' : '') +
+      '<div id="msg"></div><div class="table-wrap"><table class="list"><thead><tr><th>Profissional</th><th>Conselho</th><th>CBO-S</th><th>Contratado</th><th class="num">Guias</th><th></th></tr></thead><tbody>' +
+      doctors.map(function (d) {
+        const count = Db.state.guides.filter(function (g) { return g.doctorId === d.id }).length
+        return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong></td>' +
+          '<td class="mono nowrap">' + esc(d.councilNumber) + (d.councilNumber ? ' / ' + esc(TISS.label(TISS.UFS, d.councilUf)) : '') + '</td>' +
+          '<td class="mono">' + esc(d.cbos) + '</td>' +
+          '<td>' + esc(d.contractorName || d.professionalName) + '</td>' +
+          '<td class="num">' + count + '</td>' +
+          '<td class="row-actions"><a class="link-btn" href="#prestador/' + d.id + '">Editar</a>' +
+          (doctors.length > 1 ? '<button class="link-btn danger" data-delete-doctor="' + d.id + '">Excluir</button>' : '') + '</td></tr>'
+      }).join('') + '</tbody></table></div>'
+    $$('[data-delete-doctor]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const d = Repo.doctor(Number(b.dataset.deleteDoctor))
+        if (!confirm('Excluir ' + (d.professionalName || 'este médico') + '?')) return
+        try {
+          Repo.deleteDoctor(d.id)
+          toast('Médico excluído.')
+          viewDoctors()
+        } catch (err) { showError($('#msg'), err) }
+      })
+    })
+  }
+
+  function viewDoctorForm(id) {
+    const s = id
+      ? Repo.doctor(id)
+      : { professionalName: '', councilCode: '06', councilNumber: '', councilUf: Db.state.settings.councilUf || '33', cbos: '', contractorName: '', cnes: '', contractorCpf: '', contractorCnpj: '', byOperator: {} }
+    if (!s) return go('#prestador')
+    const others = Repo.doctors().filter(function (d) { return d.id !== id })
+    const ops = Repo.operators()
+    const byOperator = s.byOperator || {}
+    const OWN_ID = [{ value: '', label: 'Igual ao cadastro do convênio' }].concat(ID_TYPES)
+    app.innerHTML =
+      '<div class="page-head"><div><h1>' + (id ? 'Editar médico' : 'Novo médico') + '</h1><p class="sub">Dados de quem executa o atendimento. Saem nas guias deste médico e nos lotes XML.</p></div></div>' +
       '<form class="card" id="f" novalidate>' +
       '<div class="form-section">Profissional executante</div><div class="grid">' +
       '<label class="field c8">Nome do profissional <span class="req">*</span><input id="pname" maxlength="70" value="' + esc(s.professionalName) + '"></label>' +
@@ -1454,22 +1521,55 @@
       '<label class="field c4">Número no conselho <span class="req">*</span><input class="code" id="cnumber" maxlength="15" value="' + esc(s.councilNumber) + '"></label>' +
       '<label class="field c2">UF<select id="uf">' + options(TISS.UFS, s.councilUf) + '</select></label>' +
       '<label class="field c6">CBO-S <span class="req">*</span><select id="cbos">' + options(TISS.CBOS.map(function (c) { return { value: c.value, label: c.value + ' — ' + c.label } }), s.cbos, 'Selecione…') + '</select></label>' +
-      '</div><div class="form-section">Contratado (quem recebe do convênio)</div><div class="grid">' +
+      '<label class="field c6">CPF do médico <span class="req">*</span><input class="code" id="cpf" inputmode="numeric" value="' + esc(s.contractorCpf) + '"><span class="hint">Vincula o médico à conta, mesmo quando o convênio trabalha com CNPJ.</span></label>' +
+      '</div><div class="form-section">Contratado (quem recebe do convênio)</div>' +
+      (others.length
+        ? '<div class="grid"><label class="field c6">Copiar o contratado de<select id="copy-from">' + doctorOptions('', 'Escolha um médico…').replace(new RegExp('<option value="' + id + '"[^>]*>[^<]*</option>'), '') + '</select><span class="hint">Para médicos que recebem pela mesma clínica.</span></label></div>'
+        : '') +
+      '<div class="grid">' +
       '<label class="field c8">Nome do contratado<input id="cname" maxlength="70" value="' + esc(s.contractorName) + '"><span class="hint">Clínica ou o próprio profissional. Vazio = nome do profissional.</span></label>' +
       '<label class="field c4">CNES<input class="code" id="cnes" inputmode="numeric" maxlength="7" value="' + esc(s.cnes) + '"><span class="hint">Vazio = 9999999 (sem CNES)</span></label>' +
-      '<label class="field c6">CPF<input class="code" id="cpf" inputmode="numeric" value="' + esc(s.contractorCpf) + '"><span class="hint">Usado nos convênios que identificam por CPF</span></label>' +
-      '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Usado nos convênios que identificam por CNPJ</span></label>' +
-      '</div><div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button></div></form>'
+      '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Vai nos convênios que trabalham com CNPJ. Vazio = vai o CPF do médico.</span></label>' +
+      '</div>' +
+      (ops.length
+        ? '<div class="form-section">Identificação nos convênios</div>' +
+          '<p class="muted">Escolha como este médico atende em cada convênio: um pode ser pelo CPF e outro pelo CNPJ.</p>' +
+          '<div class="grid">' + ops.map(function (o) {
+            const own = byOperator[o.id] || {}
+            return '<label class="field c6">' + esc(o.name) + '<select data-own-type="' + o.id + '">' + options(OWN_ID, own.idType || '') + '</select></label>' +
+              '<label class="field c2">Código<input class="code" maxlength="14" data-own-code="' + o.id + '" value="' + esc(own.code || '') + '"></label>'
+          }).join('') + '</div>'
+        : '') +
+      '<div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
+      '<a class="btn" href="#prestador">Voltar</a></div></form>'
+    if ($('#copy-from')) {
+      $('#copy-from').addEventListener('change', function (e) {
+        const from = Repo.doctor(Number(e.target.value))
+        if (!from) return
+        $('#cname').value = from.contractorName || ''
+        $('#cnes').value = from.cnes || ''
+        $('#cnpj').value = from.contractorCnpj || ''
+      })
+    }
     $('#f').addEventListener('submit', function (e) {
       e.preventDefault()
       try {
-        Repo.saveSettings({
+        const own = Object.assign({}, byOperator)
+        ops.forEach(function (o) {
+          const idType = $('[data-own-type="' + o.id + '"]').value
+          const code = $('[data-own-code="' + o.id + '"]').value.trim()
+          if (idType === 'codigo' && !code) throw new Error('Informe o código do médico no convênio ' + o.name + '.')
+          if (idType === 'cnpj' && !$('#cnpj').value.replace(/\D/g, '')) throw new Error('O convênio ' + o.name + ' está marcado por CNPJ: informe o CNPJ do contratado.')
+          if (idType || code) own[o.id] = { idType: idType, code: code }
+          else delete own[o.id]
+        })
+        Repo.saveDoctor(id, {
           professionalName: $('#pname').value.trim(), councilCode: $('#council').value, councilNumber: $('#cnumber').value.trim(),
           councilUf: $('#uf').value, cbos: $('#cbos').value, contractorName: $('#cname').value.trim(), cnes: $('#cnes').value.trim(),
-          contractorCpf: $('#cpf').value.trim(), contractorCnpj: $('#cnpj').value.trim()
+          contractorCpf: $('#cpf').value.trim(), contractorCnpj: $('#cnpj').value.trim(), byOperator: own
         })
-        toast('Dados do prestador salvos.')
-        updateStorageNote()
+        toast('Dados do médico salvos.')
+        go('#prestador')
       } catch (err) { showError($('#msg'), err) }
     })
   }
@@ -1485,7 +1585,7 @@
     app.innerHTML =
       '<div class="page-head"><div><h1>Backup</h1><p class="sub">Os dados ficam só neste navegador, neste computador. Salve um backup com frequência.</p></div></div>' +
       '<div class="card"><h2>Seus dados</h2><p class="muted" style="margin-top:6px">' +
-      st.guides.length + ' guias · ' + st.lotes.length + ' lotes · ' + st.patients.length + ' beneficiários · ' +
+      st.doctors.length + (st.doctors.length === 1 ? ' médico · ' : ' médicos · ') + st.guides.length + ' guias · ' + st.lotes.length + ' lotes · ' + st.patients.length + ' beneficiários · ' +
       st.operators.length + ' convênios · ' +
       st.operators.reduce(function (n, o) { return n + o.prices.length }, 0) + ' valores cadastrados · ' +
       '<span class="mono">' + (used / 1024).toFixed(0) + ' KB</span> usados</p>' +
