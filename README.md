@@ -20,6 +20,8 @@ Site institucional da **Remasol Fature**.
   15 convênios). O serviço extra **Faturista** tem valor combinado com cada cliente: pode incluir a
   plataforma ou ser somado ao plano. Os limites de médicos e convênios são aplicados no app; no Faturista, as
   quantidades liberadas no painel substituem as do plano (vazio = segue o plano; sem plano = sem limite).
+  Médicos contam por CPF, sem repetir, mesmo em mais de um contratado.
+- **Contratados:** ao entrar, a pessoa escolhe o contratado (CPF ou CNPJ). Código, valores por convênio, guias e lotes são de cada contratado; nome, ANS, versão e número de lote do convênio são da conta.
 - **Painel da Remasol (`guias-tiss/admin.html`):** entre com remasolfaturetiss@gmail.com (e-mail confirmado)
   para cadastrar cada cliente pelo e-mail: plano, situação (período grátis, ativo, suspenso) e valor do
   Faturista. Na primeira entrada, o médico vê o plano e o valor combinado e confirma.

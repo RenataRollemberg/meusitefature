@@ -328,8 +328,8 @@ const Impressao = (function () {
   }
 
   function guideHtml(guide) {
-    const settings = Repo.doctorOf(guide)
-    const operator = Repo.operatorFor(guide.operatorId, settings)
+    const settings = Repo.settingsOf(guide)
+    const operator = Repo.operatorFor(guide.operatorId, Repo.contractorOf(guide))
     const patient = Repo.patient(guide.patientId) || { name: '' }
     const isSadt = guide.guideType === 'sadt' && guide.sadt
     const isHon = guide.guideType === 'honorarios' && guide.hon
@@ -363,8 +363,8 @@ const Impressao = (function () {
   // Abre a guia numa janela própria e chama a impressão do navegador.
   function print(guide) {
     // Não imprime guia com o "Código na Operadora" em branco.
-    const problem = Repo.identProblem(Repo.doctorOf(guide), guide.operatorId)
-    if (problem) throw new Error(problem + ' Complete em Prestador para imprimir a guia.')
+    const problem = Repo.guideProblem(guide)
+    if (problem) throw new Error(problem + ' Complete em Convênios para imprimir a guia.')
     const win = window.open('', '_blank')
     if (!win) throw new Error('O navegador bloqueou a janela de impressão. Permita pop-ups para esta página.')
     win.document.open()

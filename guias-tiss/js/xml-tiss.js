@@ -476,11 +476,11 @@ const XmlTiss = (function () {
     }
     const providerCode = onlyDigits(operator.providerCode)
     if (!operator.contractorIdType) {
-      push('em Prestador, informe como ' + (settings.professionalName || 'o médico') + ' é identificado no convênio "' + operator.name + '" (CPF, CNPJ ou código).')
+      push('em Convênios, informe como este contratado é identificado no convênio "' + operator.name + '" (CPF, CNPJ ou código).')
     }
     if (operator.contractorIdType === 'codigo') {
       if (!operator.providerCode.trim()) {
-        push('em Prestador, informe o código de ' + (settings.professionalName || 'o médico') + ' no convênio "' + operator.name + '".')
+        push('em Convênios, informe o código deste contratado no convênio "' + operator.name + '".')
       } else if (
         providerCode === onlyDigits(settings.contractorCpf) ||
         providerCode === onlyDigits(settings.contractorCnpj)

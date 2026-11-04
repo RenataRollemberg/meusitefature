@@ -139,6 +139,16 @@
     })
   }
 
+  function updateContractorNote() {
+    const el = document.getElementById('contractor-note')
+    const c = Repo.current()
+    el.hidden = !c
+    if (c) {
+      el.innerHTML = '<div>Contratado</div><strong>' + esc(Repo.contractorName(c)) + '</strong>' +
+        (Db.state.contractors.length > 1 ? '<br><a href="#contratados">Trocar</a>' : '')
+    }
+  }
+
   function updateStorageNote() {
     const note = document.getElementById('storage-note')
     if (Db.storageOk()) {
@@ -164,13 +174,20 @@
     [/^beneficiario\/(novo|\d+)$/, 'beneficiarios', function (m) { viewPatientForm(m[1] === 'novo' ? null : Number(m[1])) }],
     [/^convenios$/, 'convenios', viewOperators],
     [/^convenio\/(novo|\d+)$/, 'convenios', function (m) { viewOperatorForm(m[1] === 'novo' ? null : Number(m[1])) }],
-    [/^prestador$/, 'prestador', viewDoctors],
-    [/^prestador\/(novo|\d+)$/, 'prestador', function (m) { viewDoctorForm(m[1] === 'novo' ? null : Number(m[1])) }],
+    [/^prestador$/, 'prestador', viewPrestador],
+    [/^contratados$/, 'prestador', viewContractors],
+    [/^contratado\/(novo|\d+)$/, 'prestador', function (m) { viewContractorForm(m[1] === 'novo' ? null : Number(m[1])) }],
+    [/^medico\/(novo|\d+)$/, 'prestador', function (m) { viewDoctorForm(m[1] === 'novo' ? null : Number(m[1])) }],
     [/^backup$/, 'backup', viewBackup]
   ]
 
   function render() {
     const path = decodeURIComponent(location.hash.replace(/^#\/?/, '')) || 'guias'
+    // Primeiro o contratado: sem ele não há convênios, guias nem lotes.
+    const free = /^(contratados|contratado\/.*|backup)$/.test(path)
+    if (!free && !Db.state.contractors.length) return go('#contratado/novo')
+    if (!free && !Repo.current()) return go('#contratados')
+    updateContractorNote()
     for (let i = 0; i < routes.length; i++) {
       const m = path.match(routes[i][0])
       if (m) {
@@ -195,24 +212,24 @@
 
   // Com um médico só, a tela de guias fica como sempre foi.
   function manyDoctors() {
-    return Repo.doctors().length > 1
+    return Repo.doctorsOf(Repo.current()).length > 1
   }
 
   function doctorOptions(selected, placeholder) {
-    return options(Repo.doctors().map(function (d) { return { value: d.id, label: d.professionalName || 'Médico sem nome' } }), selected, placeholder)
+    return options(Repo.doctorsOf(Repo.current()).map(function (d) { return { value: d.id, label: d.professionalName || 'Médico sem nome' } }), selected, placeholder)
   }
 
   // A próxima guia já vem com o último médico usado.
   let lastDoctorId = null
 
   function firstSteps() {
-    const s = Db.state.settings
+    const c = Repo.current()
     const steps = [
-      { done: !!(s.professionalName && s.councilNumber && s.cbos), text: 'Preencha os dados do profissional em Prestador', href: '#prestador' },
-      { done: Db.state.operators.length > 0, text: 'Cadastre ao menos um convênio', href: '#convenio/novo' },
-      { done: Db.state.operators.some(function (o) { return o.prices.length > 0 }), text: 'Cadastre os valores que cada convênio paga (no cadastro do convênio)', href: '#convenios' },
+      { done: Repo.doctorsOf(c).some(function (d) { return d.professionalName && d.councilNumber && d.cbos }), text: 'Cadastre o médico em Prestador', href: '#prestador' },
+      { done: Repo.operators().length > 0, text: 'Cadastre ao menos um convênio', href: '#convenio/novo' },
+      { done: Object.keys(c.byOperator).some(function (k) { return (c.byOperator[k].prices || []).length > 0 }), text: 'Cadastre os valores que cada convênio paga (no cadastro do convênio)', href: '#convenios' },
       { done: Db.state.patients.length > 0, text: 'Cadastre um beneficiário (ou cadastre direto na guia)', href: '#beneficiario/novo' },
-      { done: Db.state.guides.length > 0, text: 'Emita a primeira guia', href: '#guia/nova/consulta' }
+      { done: Db.state.guides.some(function (g) { return g.contractorId === c.id }), text: 'Emita a primeira guia', href: '#guia/nova/consulta' }
     ]
     if (steps.every(function (x) { return x.done })) return ''
     return '<div class="card" style="margin-bottom:20px"><h2>Primeiros passos</h2><ol class="steps">' +
@@ -226,7 +243,7 @@
     const operatorId = guideFilter.operatorId ? Number(guideFilter.operatorId) : null
     const showDoctor = manyDoctors()
     const doctorId = showDoctor && guideFilter.doctorId ? Number(guideFilter.doctorId) : null
-    const guides = Repo.guides({ operatorId: operatorId, doctorId: doctorId, status: guideFilter.status, guideType: guideFilter.guideType, query: guideFilter.query })
+    const guides = Repo.guides({ contractorId: Repo.current().id, operatorId: operatorId, doctorId: doctorId, status: guideFilter.status, guideType: guideFilter.guideType, query: guideFilter.query })
     const rows = guides.map(function (g) {
       const patient = Repo.patient(g.patientId)
       const operator = Repo.operator(g.operatorId)
@@ -421,7 +438,8 @@
     const consulta = Repo.priceFor(operatorId, '22', CONSULTATION_CODE)
     return {
       guideType: type,
-      doctorId: Repo.doctor(lastDoctorId) ? lastDoctorId : Repo.doctors()[0].id,
+      contractorId: Repo.current().id,
+      doctorId: Repo.current().doctorIds.indexOf(lastDoctorId) >= 0 ? lastDoctorId : Repo.current().doctorIds[0],
       sadt: type === 'sadt' ? emptySadt() : null,
       hon: type === 'honorarios' ? emptyHon() : null,
       operatorId: operatorId,
@@ -545,6 +563,14 @@
     const editing = !!id
     const existing = editing ? Repo.guide(id) : null
     if (editing && !existing) return go('#guias')
+    if (existing && existing.contractorId !== Repo.current().id) {
+      Repo.setCurrent(existing.contractorId)
+      updateContractorNote()
+    }
+    if (!editing && !Repo.current().doctorIds.length) {
+      toast('Cadastre o médico deste contratado antes de emitir guias.', true)
+      return go('#prestador')
+    }
     if (existing && existing.loteId !== null) {
       toast('Esta guia já está em um lote. Exclua o lote para alterá-la.', true)
       return go('#lote/' + existing.loteId)
@@ -572,7 +598,7 @@
         esc(Repo.guide(g.linkedHonorId).providerGuideNumber) + '</a>. Altere as despesas por lá: ao salvar a guia de honorários, esta guia é refeita.</div>'
       : ''
     const noOps = Repo.operators().length === 0
-      ? '<div class="alert warn">Nenhum convênio cadastrado. <a href="#convenio/novo">Cadastre um convênio</a> antes de emitir guias.</div>'
+      ? '<div class="alert warn">Nenhum convênio cadastrado. <a href="#convenio/novo">Cadastre um convênio</a> deste contratado antes de emitir guias.</div>'
       : ''
 
     const ident =
@@ -751,7 +777,7 @@
       const last = Repo.lastGuideForPatient(patientId)
       if (!editing) {
         const opId = (p && p.insuranceOperatorId) || (last && last.operatorId) || null
-        if (opId && String(opId) !== $('#g-operator').value) {
+        if (opId && Repo.current().byOperator[opId] && String(opId) !== $('#g-operator').value) {
           $('#g-operator').value = String(opId)
           applyOperatorPrice()
         }
@@ -785,10 +811,10 @@
     $('#g-card').addEventListener('input', updateCardHint)
     $('#g-operator').addEventListener('change', updateCardHint)
     function updateIdentWarn() {
-      const doctor = Repo.doctor($('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId)
-      const problem = Repo.identProblem(doctor, Number($('#g-operator').value) || null)
+      const opId = Number($('#g-operator').value) || null
+      const problem = Repo.identProblem(Repo.contractor(g.contractorId), Repo.doctor($('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId), opId)
       $('#ident-warn').innerHTML = problem
-        ? '<div class="alert warn">' + esc(problem) + ' <a href="#prestador/' + doctor.id + '">Completar em Prestador</a></div>'
+        ? '<div class="alert warn">' + esc(problem) + ' <a href="#convenio/' + opId + '">Completar em Convênios</a></div>'
         : ''
     }
     $('#g-operator').addEventListener('change', updateIdentWarn)
@@ -866,7 +892,7 @@
     function fillCatalog() {
       if (hasItems) return
       const opId = currentOperatorId()
-      const op = opId ? Repo.operator(opId) : null
+      const op = opId ? Repo.operatorFor(opId, Repo.current()) : null
       const sel = $('#p-catalog')
       if (!op) {
         sel.innerHTML = '<option value="">Escolha o convênio primeiro</option>'
@@ -888,7 +914,7 @@
     if (!hasItems) {
       fillCatalog()
       $('#p-catalog').addEventListener('change', function (e) {
-        const op = Repo.operator(currentOperatorId())
+        const op = Repo.operatorFor(currentOperatorId(), Repo.current())
         const p = op && e.target.value !== '' ? op.prices[Number(e.target.value)] : null
         if (!p) return
         $('#p-table').value = p.tableCode
@@ -1077,6 +1103,7 @@
         const val = function (sel, fallback) { const el = $(sel); return el ? el.value : fallback }
         const input = {
           guideType: isSadt ? 'sadt' : isHon ? 'honorarios' : 'consulta',
+          contractorId: g.contractorId,
           doctorId: $('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId,
           operatorId: Number($('#g-operator').value) || null,
           patientId: Number($('#g-patient').value) || null,
@@ -1243,6 +1270,10 @@
   function viewLote(id) {
     const lote = Repo.lote(id)
     if (!lote) return go('#lotes')
+    if (lote.contractorId !== Repo.current().id) {
+      Repo.setCurrent(lote.contractorId)
+      updateContractorNote()
+    }
     const op = Repo.operator(lote.operatorId)
     const guides = Repo.loteGuides(id)
     const sum = Repo.loteSummary(lote)
@@ -1326,7 +1357,7 @@
       '<label class="field c4">Nascimento<input type="date" id="birth" value="' + esc(p.birthDate) + '"></label>' +
       '<label class="field c4">Telefone<input id="phone" inputmode="tel" value="' + esc(p.phone) + '"></label>' +
       '</div><div class="form-section">Cartão do convênio</div><div class="grid">' +
-      '<label class="field c6">Convênio<select id="op">' + operatorOptions(p.insuranceOperatorId, 'Particular / não informado') + '</select></label>' +
+      '<label class="field c6">Convênio<select id="op">' + options(Repo.allOperators().map(function (o) { return { value: o.id, label: o.name } }), p.insuranceOperatorId, 'Particular / não informado') + '</select></label>' +
       '<label class="field c6">Número da carteirinha<input class="code" id="card" maxlength="20" value="' + esc(p.insuranceCardNumber) + '"><span class="hint">Ao trocar, as guias pendentes (sem lote) deste convênio são atualizadas.</span></label>' +
       '<label class="field c12">Observações<textarea id="notes">' + esc(p.notes) + '</textarea></label>' +
       '</div><div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
@@ -1364,26 +1395,48 @@
   ]
 
   function viewOperators() {
+    const c = Repo.current()
     const ops = Repo.operators()
+    const others = Repo.allOperators().filter(function (o) { return !c.byOperator[o.id] })
     app.innerHTML =
-      '<div class="page-head"><div><h1>Convênios</h1><p class="sub">Operadoras para as quais você envia guias.</p></div>' +
+      '<div class="page-head"><div><h1>Convênios</h1><p class="sub">Convênios de ' + esc(Repo.contractorName(c)) + ', com o código e os valores deste contratado.</p></div>' +
       '<div class="actions"><a class="btn solid" href="#convenio/novo">Novo convênio</a></div></div>' +
+      (others.length
+        ? '<div class="filters"><label class="field">Adicionar convênio já cadastrado na conta<select id="link-op">' +
+          options(others.map(function (o) { return { value: o.id, label: o.name } }), '', 'Escolha um convênio…') + '</select></label></div>'
+        : '') +
       '<div class="table-wrap">' +
       (ops.length
-        ? '<table class="list"><thead><tr><th>Nome</th><th>Registro ANS</th><th>Versão TISS</th><th class="num">Valores</th><th class="num">Último lote</th><th></th></tr></thead><tbody>' +
+        ? '<table class="list"><thead><tr><th>Nome</th><th>Registro ANS</th><th>Identificação</th><th>Versão TISS</th><th class="num">Valores</th><th class="num">Último lote</th><th></th></tr></thead><tbody>' +
           ops.map(function (o) {
+            const own = Repo.operatorFor(o.id, c)
+            const problem = Repo.identProblem(c, null, o.id)
             return '<tr><td>' + esc(o.name) + '</td><td class="mono">' + esc(o.ansRegistry) + '</td>' +
+              '<td>' + (problem
+                ? '<span class="tag amber">Falta identificação</span>'
+                : esc(TISS.label(ID_TYPES, own.contractorIdType)) + (own.contractorIdType === 'codigo' ? ' <span class="mono muted">' + esc(own.providerCode) + '</span>' : '')) + '</td>' +
               '<td class="mono">' + esc(o.tissVersion) + '</td>' +
-              '<td class="num">' + (o.prices.length ? o.prices.length + ' proced.' : '<span class="tag amber">sem valores</span>') + '</td>' +
+              '<td class="num">' + (own.prices.length ? own.prices.length + ' proced.' : '<span class="tag amber">sem valores</span>') + '</td>' +
               '<td class="num mono">' + esc(o.lastLoteNumber) + '</td>' +
               '<td class="row-actions"><a class="link-btn" href="#convenio/' + o.id + '">Editar</a></td></tr>'
           }).join('') + '</tbody></table>'
-        : '<p class="empty">Nenhum convênio cadastrado.</p>') + '</div>'
+        : '<p class="empty">Nenhum convênio cadastrado para este contratado.</p>') + '</div>'
+    if ($('#link-op')) {
+      $('#link-op').addEventListener('change', function (e) { if (e.target.value) go('#convenio/' + e.target.value) })
+    }
   }
 
   function viewOperatorForm(id) {
     const o = id ? Repo.operator(id) : { name: '', ansRegistry: '', providerCode: '', tissVersion: TISS.DEFAULT_VERSION, lastLoteNumber: 0, allowDuplicateGuideNumbers: false, contractorIdType: 'codigo', prices: [] }
     if (!o) return go('#convenios')
+    const c = Repo.current()
+    const linked = !!(id && c.byOperator[id])
+    const link = linked ? c.byOperator[id] : {}
+    // Primeira vez deste contratado no convênio: os valores vêm de outro contratado, para ajustar.
+    const donor = id && !linked ? Db.state.contractors.find(function (x) { return x.byOperator[id] && (x.byOperator[id].prices || []).length }) : null
+    const prices = link.prices || (donor ? Db.clone(donor.byOperator[id].prices) : [])
+    const idType = link.idType || (c.type === 'cnpj' ? 'cnpj' : 'cpf')
+    const idChoices = ID_TYPES.filter(function (t) { return t.value === 'codigo' || t.value === c.type || t.value === link.idType })
     const tableOptions = TISS.TABLES.map(function (t) { return { value: t.value, label: t.value } })
     function priceRow(p) {
       return '<tr data-price-row>' +
@@ -1394,7 +1447,7 @@
         '<td class="row-actions"><button type="button" class="link-btn danger" data-remove-price>Remover</button></td></tr>'
     }
     app.innerHTML =
-      '<div class="page-head"><h1>' + (id ? 'Editar convênio' : 'Novo convênio') + '</h1></div>' +
+      '<div class="page-head"><div><h1>' + (linked ? 'Editar convênio' : 'Novo convênio') + '</h1><p class="sub">Contratado: ' + esc(Repo.contractorName(c)) + '</p></div></div>' +
       '<form class="card" id="f" novalidate><div class="grid">' +
       '<label class="field c8">Nome do convênio <span class="req">*</span><input id="name" value="' + esc(o.name) + '" autofocus></label>' +
       '<label class="field c4">Registro ANS <span class="req">*</span><input class="code" id="ans" inputmode="numeric" maxlength="6" value="' + esc(o.ansRegistry) + '"><span class="hint">6 dígitos, está na carteirinha</span></label>' +
@@ -1402,17 +1455,25 @@
       '<label class="field c4">Último número de lote usado<input class="code" id="lastlote" inputmode="numeric" value="' + esc(o.lastLoteNumber) + '"><span class="hint">O próximo lote será este + 1</span></label>' +
       '<label class="check c12"><input type="checkbox" id="dup"' + (o.allowDuplicateGuideNumbers ? ' checked' : '') + '>Aceitar números de guia repetidos neste convênio</label>' +
       '</div>' +
-      '<div class="form-section">Tabela de valores deste convênio</div>' +
-      '<p class="hint" style="margin-bottom:10px">Quanto este convênio paga por procedimento. A guia usa somente estes valores quando este convênio é escolhido.</p>' +
+      '<p class="hint">Nome, registro ANS, versão e número do lote valem para todos os contratados da conta.</p>' +
+      '<div class="form-section">Identificação deste contratado no convênio</div><div class="grid">' +
+      '<label class="field c6">Como o convênio identifica este contratado <span class="req">*</span><select id="own-type">' + options(idChoices, idType) + '</select></label>' +
+      '<label class="field c6" id="own-code-wrap">Código deste contratado no convênio <span class="req">*</span><input class="code" id="own-code" maxlength="14" value="' + esc(link.code || '') + '"></label>' +
+      '</div>' +
+      '<div class="form-section">Tabela de valores deste contratado</div>' +
+      '<p class="hint" style="margin-bottom:10px">Quanto este convênio paga a este contratado por procedimento. A guia usa estes valores quando este convênio é escolhido.</p>' +
       '<div class="grid"><label class="field c12">Adicionar procedimento da TUSS<input id="price-tuss" placeholder="Código ou nome do procedimento…"></label></div>' +
       '<div class="table-wrap" style="margin-top:12px"><table class="list"><thead><tr><th>Tabela</th><th>Código</th><th>Descrição</th><th>Valor (R$)</th><th></th></tr></thead>' +
-      '<tbody id="prices">' + o.prices.map(priceRow).join('') + '</tbody></table>' +
-      '<p class="empty" id="prices-empty"' + (o.prices.length ? ' hidden' : '') + '>Nenhum valor cadastrado. Busque o procedimento acima ou ' +
+      '<tbody id="prices">' + prices.map(priceRow).join('') + '</tbody></table>' +
+      '<p class="empty" id="prices-empty"' + (prices.length ? ' hidden' : '') + '>Nenhum valor cadastrado. Busque o procedimento acima ou ' +
       '<button type="button" class="link-btn" id="add-price">adicione uma linha</button>.</p></div>' +
-      (o.prices.length ? '<button type="button" class="btn small" id="add-price-2" style="margin-top:10px">+ Linha em branco</button>' : '') +
+      (prices.length ? '<button type="button" class="btn small" id="add-price-2" style="margin-top:10px">+ Linha em branco</button>' : '') +
       '<div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
       '<a class="btn" href="#convenios">Cancelar</a>' +
-      (id ? '<button type="button" class="btn danger" id="del">Excluir</button>' : '') + '</div></form>'
+      (linked ? '<button type="button" class="btn danger" id="del">Excluir</button>' : '') + '</div></form>'
+    function toggleOwnCode() { $('#own-code-wrap').hidden = $('#own-type').value !== 'codigo' }
+    $('#own-type').addEventListener('change', toggleOwnCode)
+    toggleOwnCode()
     function addPriceRow(p) {
       $('#prices').insertAdjacentHTML('beforeend', priceRow(p))
       $('#prices-empty').hidden = true
@@ -1449,20 +1510,21 @@
     $('#f').addEventListener('submit', function (e) {
       e.preventDefault()
       try {
-        Repo.saveOperator(id, {
-          name: $('#name').value, ansRegistry: $('#ans').value, providerCode: o.providerCode || '',
+        const priceList = readPrices()
+        const saved = Repo.saveOperator(id, {
+          name: $('#name').value, ansRegistry: $('#ans').value,
           tissVersion: $('#version').value, lastLoteNumber: $('#lastlote').value,
-          allowDuplicateGuideNumbers: $('#dup').checked, contractorIdType: o.contractorIdType || 'codigo',
-          prices: readPrices()
+          allowDuplicateGuideNumbers: $('#dup').checked
         })
-        toast(id ? 'Convênio salvo.' : 'Convênio salvo. Em Prestador, informe como cada médico é identificado nele.')
+        Repo.linkOperator(c.id, saved.id, { idType: $('#own-type').value, code: $('#own-code').value, prices: priceList })
+        toast('Convênio salvo.')
         go('#convenios')
       } catch (err) { showError($('#msg'), err) }
     })
-    if (id) {
+    if (linked) {
       $('#del').addEventListener('click', function () {
-        if (!confirm('Excluir o convênio ' + o.name + '?')) return
-        try { Repo.deleteOperator(id); toast('Convênio excluído.'); go('#convenios') } catch (err) { showError($('#msg'), err) }
+        if (!confirm('Excluir o convênio ' + o.name + ' deste contratado?')) return
+        try { Repo.unlinkOperator(c.id, id); toast('Convênio excluído deste contratado.'); go('#convenios') } catch (err) { showError($('#msg'), err) }
       })
     }
   }
@@ -1471,39 +1533,134 @@
   // Prestador
   // ---------------------------------------------------------------------------
 
-  function viewDoctors() {
-    const doctors = Repo.doctors()
-    // Conta nova: abre direto o formulário do primeiro médico.
-    if (doctors.length === 1 && !doctors[0].professionalName) return viewDoctorForm(doctors[0].id)
+  // Texto do uso da assinatura: médicos contam por CPF, sem repetir.
+  function doctorUsage() {
     const limites = window.Assinatura ? window.Assinatura.limites() : null
     const max = limites ? limites.medicos : null
-    const full = max !== null && doctors.length >= max
+    const used = Repo.doctors().length
+    return { max: max, used: used, full: max !== null && used >= max,
+      text: max !== null ? 'Usando <strong>' + used + ' de ' + max + '</strong> ' + (max === 1 ? 'médico' : 'médicos') + ' na assinatura.' : '' }
+  }
+
+  function typeLabel(c) {
+    return c.type === 'cnpj' ? 'CNPJ' : 'CPF'
+  }
+
+  function viewContractors() {
+    const list = Repo.contractors()
+    if (!list.length) return go('#contratado/novo')
     app.innerHTML =
-      '<div class="page-head"><div><h1>Prestador</h1><p class="sub">Médicos da conta. Os dados de cada um saem nas guias dele e nos lotes XML.' +
-      (max !== null ? ' Usando <strong>' + doctors.length + ' de ' + max + '</strong> ' + (max === 1 ? 'médico' : 'médicos') + '.' : '') + '</p></div>' +
-      '<div class="actions">' + (full ? '' : '<a class="btn solid" href="#prestador/novo">Adicionar médico</a>') + '</div></div>' +
-      (full ? '<div class="alert warn">Sua assinatura chegou ao limite de médicos. Para liberar mais, fale com a Remasol.</div>' : '') +
-      '<div id="msg"></div><div class="table-wrap"><table class="list"><thead><tr><th>Profissional</th><th>Conselho</th><th>CBO-S</th><th>Contratado</th><th class="num">Guias</th><th></th></tr></thead><tbody>' +
-      doctors.map(function (d) {
-        const count = Db.state.guides.filter(function (g) { return g.doctorId === d.id }).length
-        const missing = Repo.operators().filter(function (o) { return !Repo.doctorExcluded(d, o.id) && Repo.identProblem(d, o.id) }).map(function (o) { return o.name })
-        return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong>' +
-          (missing.length ? '<br><span class="tag amber">Falta identificação: ' + esc(missing.join(', ')) + '</span>' : '') + '</td>' +
-          '<td class="mono nowrap">' + esc(d.councilNumber) + (d.councilNumber ? ' / ' + esc(TISS.label(TISS.UFS, d.councilUf)) : '') + '</td>' +
-          '<td class="mono">' + esc(d.cbos) + '</td>' +
-          '<td>' + esc(d.contractorName || d.professionalName) + '</td>' +
-          '<td class="num">' + count + '</td>' +
-          '<td class="row-actions"><a class="link-btn" href="#prestador/' + d.id + '">Editar</a>' +
-          (doctors.length > 1 ? '<button class="link-btn danger" data-delete-doctor="' + d.id + '">Excluir</button>' : '') + '</td></tr>'
+      '<div class="page-head"><div><h1>Qual contratado você vai usar?</h1><p class="sub">Convênios, valores, guias e lotes ficam separados por contratado. ' + doctorUsage().text + '</p></div>' +
+      '<div class="actions"><a class="btn solid" href="#contratado/novo">Novo contratado</a></div></div>' +
+      '<div class="table-wrap"><table class="list"><thead><tr><th>Contratado</th><th>Tipo</th><th class="num">Médicos</th><th class="num">Convênios</th><th></th></tr></thead><tbody>' +
+      list.map(function (c) {
+        return '<tr><td><strong>' + esc(Repo.contractorName(c)) + '</strong></td><td>' + typeLabel(c) + '</td>' +
+          '<td class="num">' + c.doctorIds.length + '</td><td class="num">' + Object.keys(c.byOperator).length + '</td>' +
+          '<td class="row-actions"><button class="btn small solid" data-use="' + c.id + '">Usar este</button></td></tr>'
       }).join('') + '</tbody></table></div>'
-    $$('[data-delete-doctor]').forEach(function (b) {
+    $$('[data-use]').forEach(function (b) {
       b.addEventListener('click', function () {
-        const d = Repo.doctor(Number(b.dataset.deleteDoctor))
-        if (!confirm('Excluir ' + (d.professionalName || 'este médico') + '?')) return
+        Repo.setCurrent(Number(b.dataset.use))
+        guideFilter.doctorId = ''
+        guideFilter.operatorId = ''
+        go('#guias')
+      })
+    })
+  }
+
+  function viewContractorForm(id) {
+    const c = id ? Repo.contractor(id) : { type: 'cpf', name: '', cnpj: '', cnes: '' }
+    if (!c) return go('#contratados')
+    const hasGuides = !!id && Db.state.guides.some(function (g) { return g.contractorId === id })
+    app.innerHTML =
+      '<div class="page-head"><div><h1>' + (id ? 'Editar contratado' : 'Novo contratado') + '</h1><p class="sub">Contratado é quem recebe do convênio: o próprio médico pelo CPF ou a clínica pelo CNPJ.</p></div></div>' +
+      '<form class="card" id="f" novalidate><div class="grid">' +
+      '<label class="field c4">Tipo <span class="req">*</span><select id="ctype"' + (hasGuides ? ' disabled' : '') + '>' +
+      options([{ value: 'cpf', label: 'CPF (o próprio médico)' }, { value: 'cnpj', label: 'CNPJ (clínica)' }], c.type) + '</select></label>' +
+      '<label class="field c8">Nome do contratado <span id="cname-req" class="req">*</span><input id="cname" maxlength="70" value="' + esc(c.name) + '"><span class="hint" id="cname-hint">Vazio = nome do médico.</span></label>' +
+      '<label class="field c6" id="cnpj-wrap">CNPJ <span class="req">*</span><input class="code" id="cnpj" inputmode="numeric" value="' + esc(c.cnpj) + '"></label>' +
+      '<label class="field c6">CNES<input class="code" id="cnes" inputmode="numeric" maxlength="7" value="' + esc(c.cnes) + '"><span class="hint">Vazio = 9999999 (sem CNES)</span></label>' +
+      '</div><div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
+      (Db.state.contractors.length ? '<a class="btn" href="' + (id ? '#prestador' : '#contratados') + '">Voltar</a>' : '') +
+      (id ? '<button type="button" class="btn danger" id="del">Excluir</button>' : '') + '</div></form>'
+    function toggleType() {
+      const cnpj = $('#ctype').value === 'cnpj'
+      $('#cnpj-wrap').hidden = !cnpj
+      $('#cname-req').hidden = !cnpj
+      $('#cname-hint').hidden = cnpj
+    }
+    $('#ctype').addEventListener('change', toggleType)
+    toggleType()
+    $('#f').addEventListener('submit', function (e) {
+      e.preventDefault()
+      try {
+        const saved = Repo.saveContractor(id, { type: $('#ctype').value, name: $('#cname').value, cnpj: $('#cnpj').value, cnes: $('#cnes').value })
+        Repo.setCurrent(saved.id)
+        toast('Contratado salvo.')
+        go('#prestador')
+      } catch (err) { showError($('#msg'), err) }
+    })
+    if (id) {
+      $('#del').addEventListener('click', function () {
+        if (!confirm('Excluir o contratado ' + Repo.contractorName(c) + '?')) return
         try {
-          Repo.deleteDoctor(d.id)
-          toast('Médico excluído.')
-          viewDoctors()
+          Repo.deleteContractor(id)
+          toast('Contratado excluído.')
+          go('#contratados')
+        } catch (err) { showError($('#msg'), err) }
+      })
+    }
+  }
+
+  function viewPrestador() {
+    const c = Repo.current()
+    const doctors = Repo.doctorsOf(c)
+    const usage = doctorUsage()
+    const canAdd = c.type === 'cnpj' || !doctors.length
+    const others = Repo.doctors().filter(function (d) { return c.doctorIds.indexOf(d.id) < 0 })
+    app.innerHTML =
+      '<div class="page-head"><div><h1>Prestador</h1><p class="sub">' + esc(Repo.contractorName(c)) + ' · ' + typeLabel(c) +
+      (c.cnpj ? ' · <span class="mono">' + esc(c.cnpj) + '</span>' : '') + (usage.text ? '. ' + usage.text : '') + '</p></div>' +
+      '<div class="actions"><a class="btn" href="#contratado/' + c.id + '">Editar contratado</a><a class="btn" href="#contratado/novo">Novo contratado</a></div></div>' +
+      '<div class="card"><h2>' + (c.type === 'cnpj' ? 'Médicos executantes' : 'Médico') + '</h2>' +
+      (canAdd && usage.full ? '<div class="alert warn" style="margin-top:10px">Sua assinatura chegou ao limite de médicos. Médicos já cadastrados ainda podem ser adicionados aqui. Para liberar mais, fale com a Remasol.</div>' : '') +
+      '<div id="msg"></div>' +
+      (canAdd
+        ? '<div class="filters" style="margin-top:12px">' +
+          (others.length ? '<label class="field">Adicionar médico já cadastrado<select id="add-doctor">' +
+            options(others.map(function (d) { return { value: d.id, label: d.professionalName || 'Sem nome' } }), '', 'Escolha um médico…') + '</select><span class="hint">Mesmo CPF: não conta de novo na assinatura.</span></label>' : '') +
+          (usage.full ? '' : '<a class="btn solid" href="#medico/novo" style="align-self:center">Novo médico</a>') + '</div>'
+        : '') +
+      '<div class="table-wrap" style="margin-top:12px">' +
+      (doctors.length
+        ? '<table class="list"><thead><tr><th>Profissional</th><th>Conselho</th><th>CBO-S</th><th class="num">Guias</th><th></th></tr></thead><tbody>' +
+          doctors.map(function (d) {
+            const count = Db.state.guides.filter(function (g) { return g.contractorId === c.id && g.doctorId === d.id }).length
+            return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong></td>' +
+              '<td class="mono nowrap">' + esc(d.councilNumber) + (d.councilNumber ? ' / ' + esc(TISS.label(TISS.UFS, d.councilUf)) : '') + '</td>' +
+              '<td class="mono">' + esc(d.cbos) + '</td><td class="num">' + count + '</td>' +
+              '<td class="row-actions"><a class="link-btn" href="#medico/' + d.id + '">Editar</a>' +
+              '<button class="link-btn danger" data-remove-doctor="' + d.id + '">Excluir</button></td></tr>'
+          }).join('') + '</tbody></table>'
+        : '<p class="empty">Nenhum médico neste contratado.</p>') + '</div></div>'
+    if ($('#add-doctor')) {
+      $('#add-doctor').addEventListener('change', function (e) {
+        if (!e.target.value) return
+        try {
+          Repo.addDoctorTo(c.id, Number(e.target.value))
+          toast('Médico adicionado.')
+          viewPrestador()
+        } catch (err) { showError($('#msg'), err) }
+      })
+    }
+    $$('[data-remove-doctor]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const d = Repo.doctor(Number(b.dataset.removeDoctor))
+        if (!confirm('Excluir ' + (d.professionalName || 'este médico') + ' deste contratado?')) return
+        try {
+          Repo.removeDoctorFrom(c.id, d.id)
+          toast('Médico excluído deste contratado.')
+          viewPrestador()
         } catch (err) { showError($('#msg'), err) }
       })
     })
@@ -1512,109 +1669,30 @@
   function viewDoctorForm(id) {
     const s = id
       ? Repo.doctor(id)
-      : { professionalName: '', councilCode: '06', councilNumber: '', councilUf: Db.state.settings.councilUf || '33', cbos: '', contractorName: '', cnes: '', contractorCpf: '', contractorCnpj: '', byOperator: {} }
+      : { professionalName: '', councilCode: '06', councilNumber: '', councilUf: Db.state.settings.councilUf || '33', cbos: '', contractorCpf: '' }
     if (!s) return go('#prestador')
-    const others = Repo.doctors().filter(function (d) { return d.id !== id })
-    const ops = Repo.operators()
-    const byOperator = s.byOperator || {}
-    const OWN_ID = [{ value: '', label: 'Selecione…' }].concat(ID_TYPES)
+    if (!id) {
+      const c = Repo.current()
+      if (c.type === 'cpf' && c.doctorIds.length) return go('#prestador')
+    }
     app.innerHTML =
-      '<div class="page-head"><div><h1>' + (id ? 'Editar médico' : 'Novo médico') + '</h1><p class="sub">Dados de quem executa o atendimento. Saem nas guias deste médico e nos lotes XML.</p></div></div>' +
-      '<form class="card" id="f" novalidate>' +
-      '<div class="form-section">Profissional executante</div><div class="grid">' +
+      '<div class="page-head"><div><h1>' + (id ? 'Editar médico' : 'Novo médico') + '</h1><p class="sub">Dados de quem executa o atendimento. Valem em todos os contratados deste médico.</p></div></div>' +
+      '<form class="card" id="f" novalidate><div class="grid">' +
       '<label class="field c8">Nome do profissional <span class="req">*</span><input id="pname" maxlength="70" value="' + esc(s.professionalName) + '"></label>' +
       '<label class="field c4">Conselho<select id="council">' + options(TISS.COUNCILS, s.councilCode) + '</select></label>' +
       '<label class="field c4">Número no conselho <span class="req">*</span><input class="code" id="cnumber" maxlength="15" value="' + esc(s.councilNumber) + '"></label>' +
       '<label class="field c2">UF<select id="uf">' + options(TISS.UFS, s.councilUf) + '</select></label>' +
       '<label class="field c6">CBO-S <span class="req">*</span><select id="cbos">' + options(TISS.CBOS.map(function (c) { return { value: c.value, label: c.value + ' — ' + c.label } }), s.cbos, 'Selecione…') + '</select></label>' +
-      '<label class="field c6">CPF do médico <span class="req">*</span><input class="code" id="cpf" inputmode="numeric" value="' + esc(s.contractorCpf) + '"><span class="hint">Vincula o médico à conta, mesmo quando o convênio trabalha com CNPJ.</span></label>' +
-      '</div><div class="form-section">Contratado (quem recebe do convênio)</div>' +
-      (others.length
-        ? '<div class="grid"><label class="field c6">Copiar o contratado de<select id="copy-from">' + doctorOptions('', 'Escolha um médico…').replace(new RegExp('<option value="' + id + '"[^>]*>[^<]*</option>'), '') + '</select><span class="hint">Para médicos que recebem pela mesma clínica.</span></label></div>'
-        : '') +
-      '<div class="grid">' +
-      '<label class="field c8">Nome do contratado<input id="cname" maxlength="70" value="' + esc(s.contractorName) + '"><span class="hint">Clínica ou o próprio profissional. Vazio = nome do profissional.</span></label>' +
-      '<label class="field c4">CNES<input class="code" id="cnes" inputmode="numeric" maxlength="7" value="' + esc(s.cnes) + '"><span class="hint">Vazio = 9999999 (sem CNES)</span></label>' +
-      '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Usado nos convênios marcados por CNPJ, logo abaixo.</span></label>' +
-      '</div>' +
-      '<div class="form-section">Identificação nos convênios</div>' +
-      (ops.length
-        ? '<p class="muted">Como este médico é identificado em cada convênio: um pode ser pelo CPF, outro pelo CNPJ e outro pelo código dele.</p>' +
-          ops.map(function (o) {
-            const own = byOperator[o.id] || {}
-            return '<div class="grid" data-own-row="' + o.id + '" style="margin-top:12px"' + (own.excluded ? ' hidden' : '') + '>' +
-              '<label class="field c6">' + esc(o.name) + '<select data-own-type="' + o.id + '">' + options(OWN_ID, own.idType || '') + '</select></label>' +
-              '<label class="field c2">Código<input class="code" maxlength="14" data-own-code="' + o.id + '" value="' + esc(own.code || '') + '"></label>' +
-              '<div class="c2" style="align-self:end"><button type="button" class="btn small danger" data-own-remove="' + o.id + '">Excluir</button></div></div>'
-          }).join('') +
-          '<div class="grid" id="own-add" style="margin-top:12px"><label class="field c6">Adicionar convênio de volta<select id="own-add-select"></select></label></div>'
-        : '<div class="alert warn">Nenhum convênio cadastrado ainda. <a href="#convenio/novo">Cadastre um convênio</a> e volte aqui para informar como este médico é identificado nele.</div>') +
-      '<div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
+      '<label class="field c6">CPF do médico <span class="req">*</span><input class="code" id="cpf" inputmode="numeric" value="' + esc(s.contractorCpf) + '"><span class="hint">Cada CPF conta como 1 médico na assinatura.</span></label>' +
+      '</div><div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
       '<a class="btn" href="#prestador">Voltar</a></div></form>'
-    function refreshOwnAdd() {
-      if (!$('#own-add')) return
-      const removed = ops.filter(function (o) { return $('[data-own-row="' + o.id + '"]').hidden })
-      $('#own-add').hidden = !removed.length
-      $('#own-add-select').innerHTML = options(removed.map(function (o) { return { value: o.id, label: o.name } }), '', 'Escolha um convênio…')
-    }
-    $$('[data-own-remove]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        const opId = Number(b.dataset.ownRemove)
-        const count = id ? Db.state.guides.filter(function (g) { return g.doctorId === id && g.operatorId === opId }).length : 0
-        if (count) {
-          return showError($('#msg'), new Error('Este médico tem ' + count + (count === 1 ? ' guia' : ' guias') + ' em ' + Repo.operator(opId).name + '. Exclua ou troque essas guias antes de excluir o convênio do cadastro dele.'))
-        }
-        $('#msg').innerHTML = ''
-        $('[data-own-row="' + opId + '"]').hidden = true
-        refreshOwnAdd()
-      })
-    })
-    if ($('#own-add-select')) {
-      $('#own-add-select').addEventListener('change', function (e) {
-        if (!e.target.value) return
-        $('[data-own-row="' + e.target.value + '"]').hidden = false
-        refreshOwnAdd()
-      })
-    }
-    refreshOwnAdd()
-    function toggleOwnCode() {
-      $$('[data-own-type]').forEach(function (sel) {
-        const wrap = $('[data-own-code="' + sel.dataset.ownType + '"]').closest('label')
-        wrap.style.visibility = sel.value === 'codigo' ? '' : 'hidden'
-      })
-    }
-    $$('[data-own-type]').forEach(function (sel) { sel.addEventListener('change', toggleOwnCode) })
-    toggleOwnCode()
-    if ($('#copy-from')) {
-      $('#copy-from').addEventListener('change', function (e) {
-        const from = Repo.doctor(Number(e.target.value))
-        if (!from) return
-        $('#cname').value = from.contractorName || ''
-        $('#cnes').value = from.cnes || ''
-        $('#cnpj').value = from.contractorCnpj || ''
-      })
-    }
     $('#f').addEventListener('submit', function (e) {
       e.preventDefault()
       try {
-        const own = Object.assign({}, byOperator)
-        ops.forEach(function (o) {
-          if ($('[data-own-row="' + o.id + '"]').hidden) {
-            own[o.id] = { excluded: true }
-            return
-          }
-          const idType = $('[data-own-type="' + o.id + '"]').value
-          const code = idType === 'codigo' ? $('[data-own-code="' + o.id + '"]').value.trim() : ''
-          if (idType === 'codigo' && !code) throw new Error('Informe o código do médico no convênio ' + o.name + '.')
-          if (idType === 'cnpj' && !$('#cnpj').value.replace(/\D/g, '')) throw new Error('O convênio ' + o.name + ' está marcado por CNPJ: informe o CNPJ do contratado.')
-          if (idType) own[o.id] = { idType: idType, code: code }
-          else delete own[o.id]
-        })
         Repo.saveDoctor(id, {
           professionalName: $('#pname').value.trim(), councilCode: $('#council').value, councilNumber: $('#cnumber').value.trim(),
-          councilUf: $('#uf').value, cbos: $('#cbos').value, contractorName: $('#cname').value.trim(), cnes: $('#cnes').value.trim(),
-          contractorCpf: $('#cpf').value.trim(), contractorCnpj: $('#cnpj').value.trim(), byOperator: own
-        })
+          councilUf: $('#uf').value, cbos: $('#cbos').value, contractorCpf: $('#cpf').value.trim()
+        }, id ? null : Repo.current().id)
         toast('Dados do médico salvos.')
         go('#prestador')
       } catch (err) { showError($('#msg'), err) }
@@ -1632,9 +1710,9 @@
     app.innerHTML =
       '<div class="page-head"><div><h1>Backup</h1><p class="sub">Os dados ficam só neste navegador, neste computador. Salve um backup com frequência.</p></div></div>' +
       '<div class="card"><h2>Seus dados</h2><p class="muted" style="margin-top:6px">' +
-      st.doctors.length + (st.doctors.length === 1 ? ' médico · ' : ' médicos · ') + st.guides.length + ' guias · ' + st.lotes.length + ' lotes · ' + st.patients.length + ' beneficiários · ' +
+      st.contractors.length + (st.contractors.length === 1 ? ' contratado · ' : ' contratados · ') + st.doctors.length + (st.doctors.length === 1 ? ' médico · ' : ' médicos · ') + st.guides.length + ' guias · ' + st.lotes.length + ' lotes · ' + st.patients.length + ' beneficiários · ' +
       st.operators.length + ' convênios · ' +
-      st.operators.reduce(function (n, o) { return n + o.prices.length }, 0) + ' valores cadastrados · ' +
+      st.contractors.reduce(function (n, c) { return n + Object.keys(c.byOperator).reduce(function (m, k) { return m + (c.byOperator[k].prices || []).length }, 0) }, 0) + ' valores cadastrados · ' +
       '<span class="mono">' + (used / 1024).toFixed(0) + ' KB</span> usados</p>' +
       '<div class="form-actions"><button class="btn solid" id="export">Baixar backup</button>' +
       '<label class="btn" for="import-file">Restaurar backup…</label><input type="file" id="import-file" accept=".json,application/json" hidden></div>' +

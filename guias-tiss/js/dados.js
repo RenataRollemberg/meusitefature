@@ -147,12 +147,17 @@ const Db = (function () {
       // própria: doctors[].byOperator = { <id do convênio>: { idType, code } }. "settings" fica como
       // cópia do primeiro médico (usada como padrão de UF nos formulários).
       doctors: [],
+      // Contratado = quem recebe do convênio: { id, type: 'cpf'|'cnpj', name, cnpj, cnes, doctorIds,
+      // byOperator: { <id do convênio>: { idType, code, prices } } }. Convênio com entrada aqui é
+      // convênio que este contratado atende. Médicos (CPF) são da conta: o mesmo médico pode estar em
+      // vários contratados e conta uma vez só na assinatura.
+      contractors: [],
       // Cada convênio tem a sua tabela de valores: operators[].prices = [{ tableCode, code, description, value }]
       operators: [],
       patients: [],
       guides: [],
       lotes: [],
-      seq: { operator: 0, patient: 0, guide: 0, lote: 0, doctor: 0 }
+      seq: { operator: 0, patient: 0, guide: 0, lote: 0, doctor: 0, contractor: 0 }
     }
   }
 
@@ -180,9 +185,70 @@ const Db = (function () {
     }
   }
 
+  // Cada médico antigo vira um contratado. Médicos com o mesmo CNPJ, nome e CNES entram no mesmo
+  // contratado, desde que identificados do mesmo jeito em cada convênio: assim o XML não muda.
+  function migrateContractors(out) {
+    if (out.contratados) return
+    out.contratados = true
+    const digits = function (v) { return String(v || '').replace(/\D/g, '') }
+    const lone = out.doctors.length === 1 ? out.doctors[0] : null
+    if (lone && !lone.professionalName && !digits(lone.contractorCpf) && !lone.contractorName && !digits(lone.contractorCnpj) &&
+        !out.guides.length && !out.operators.length) {
+      out.doctors = []
+      return
+    }
+    out.contractors = []
+    out.seq.contractor = 0
+    const priceCopy = function (opId) {
+      const op = out.operators.find(function (o) { return o.id === opId })
+      return op ? JSON.parse(JSON.stringify(op.prices || [])) : []
+    }
+    const byDoctor = {}
+    out.doctors.forEach(function (d) {
+      const links = {}
+      Object.keys(d.byOperator || {}).forEach(function (k) {
+        const own = d.byOperator[k]
+        if (own && !own.excluded && own.idType) links[k] = { idType: own.idType, code: own.code || '', prices: priceCopy(Number(k)) }
+      })
+      out.guides.forEach(function (g) {
+        if (g.doctorId === d.id && !links[g.operatorId]) {
+          const own = (d.byOperator || {})[g.operatorId] || {}
+          links[g.operatorId] = { idType: own.idType || '', code: own.code || '', prices: priceCopy(g.operatorId) }
+        }
+      })
+      const cnpj = digits(d.contractorCnpj)
+      const same = cnpj && out.contractors.find(function (c) {
+        if (c.type !== 'cnpj' || digits(c.cnpj) !== cnpj || c.name !== (d.contractorName || '') || digits(c.cnes) !== digits(d.cnes)) return false
+        return Object.keys(links).every(function (k) {
+          const other = c.byOperator[k]
+          return !other || (other.idType === links[k].idType && other.code === links[k].code && links[k].idType !== 'cpf')
+        })
+      })
+      if (same) {
+        same.doctorIds.push(d.id)
+        Object.assign(same.byOperator, Object.assign({}, links, same.byOperator))
+        byDoctor[d.id] = same
+      } else {
+        out.seq.contractor += 1
+        const c = {
+          id: out.seq.contractor, type: cnpj ? 'cnpj' : 'cpf', name: d.contractorName || '', cnpj: d.contractorCnpj || '',
+          cnes: d.cnes || '', doctorIds: [d.id], byOperator: links
+        }
+        out.contractors.push(c)
+        byDoctor[d.id] = c
+      }
+    })
+    out.guides.forEach(function (g) { g.contractorId = byDoctor[g.doctorId].id })
+    out.lotes.forEach(function (l) {
+      const g = out.guides.find(function (x) { return x.loteId === l.id })
+      l.contractorId = g ? g.contractorId : out.contractors[0].id
+    })
+  }
+
   function fresh() {
     const out = empty()
     migrateDoctors(out)
+    migrateContractors(out)
     return out
   }
 
@@ -208,13 +274,20 @@ const Db = (function () {
     delete out.procedures
     if (out.seq) delete out.seq.procedure
     migrateDoctors(out)
+    migrateContractors(out)
     return out
   }
 
   function load() {
     try {
       const raw = localStorage.getItem(KEY)
-      if (raw) state = migrate(JSON.parse(raw))
+      if (raw) {
+        // Guarda uma cópia antes da mudança para contratados (se couber no navegador).
+        if (raw.indexOf('"contratados":true') < 0) {
+          try { localStorage.setItem(KEY + ':antes-contratados', raw) } catch (e) { /* sem espaço: segue */ }
+        }
+        state = migrate(JSON.parse(raw))
+      }
     } catch (e) {
       storageOk = false
     }
@@ -278,7 +351,72 @@ const Db = (function () {
 // ---------------------------------------------------------------------------
 
 const Repo = {
-  // ----- Médicos (Prestador)
+  // ----- Contratado em uso (escolhido ao entrar)
+  currentId: null,
+  current: function () {
+    const list = Db.state.contractors
+    if (list.length === 1) return list[0]
+    if (Repo.currentId === null) {
+      try { Repo.currentId = Number(sessionStorage.getItem('guias-tiss:contratado')) || null } catch (e) { Repo.currentId = null }
+    }
+    return Repo.contractor(Repo.currentId)
+  },
+  setCurrent: function (id) {
+    Repo.currentId = id
+    try { sessionStorage.setItem('guias-tiss:contratado', String(id)) } catch (e) { /* só vale nesta página */ }
+  },
+
+  // ----- Contratados
+  contractors: function () {
+    return Db.state.contractors.slice().sort(function (a, b) { return Repo.contractorName(a).localeCompare(Repo.contractorName(b), 'pt-BR') })
+  },
+  contractor: function (id) {
+    return Db.byId(Db.state.contractors, id)
+  },
+  contractorOf: function (guide) {
+    return Repo.contractor(guide.contractorId)
+  },
+  contractorName: function (c) {
+    const d = c.doctorIds.length ? Repo.doctor(c.doctorIds[0]) : null
+    return c.name || (d && d.professionalName) || 'Contratado sem nome'
+  },
+  saveContractor: function (id, input) {
+    const digits = String(input.cnpj || '').replace(/\D/g, '')
+    if (input.type === 'cnpj') {
+      if (!input.name.trim()) throw new Error('Informe o nome da clínica.')
+      if (digits.length !== 14) throw new Error('Informe o CNPJ (14 dígitos).')
+      if (Db.state.contractors.some(function (c) { return c.id !== id && c.type === 'cnpj' && String(c.cnpj).replace(/\D/g, '') === digits })) {
+        throw new Error('Este CNPJ já está cadastrado.')
+      }
+    }
+    const data = { type: input.type, name: input.name.trim(), cnpj: input.type === 'cnpj' ? input.cnpj.trim() : String(input.cnpj || '').trim(), cnes: input.cnes.trim() }
+    let saved
+    if (id) {
+      saved = Object.assign(Repo.contractor(id), data)
+    } else {
+      saved = Object.assign({ id: Db.nextId('contractor'), doctorIds: [], byOperator: {} }, data)
+      Db.state.contractors.push(saved)
+    }
+    Repo.syncSettings()
+    Db.save()
+    return saved
+  },
+  deleteContractor: function (id) {
+    if (Db.state.guides.some(function (g) { return g.contractorId === id })) {
+      throw new Error('Este contratado possui guias cadastradas e não pode ser excluído.')
+    }
+    const c = Repo.contractor(id)
+    const doctors = c.doctorIds.slice()
+    const ops = Object.keys(c.byOperator).map(Number)
+    Db.state.contractors = Db.state.contractors.filter(function (x) { return x.id !== id })
+    doctors.forEach(Repo.dropDoctorIfUnused)
+    ops.forEach(Repo.dropOperatorIfUnused)
+    if (Repo.currentId === id) Repo.currentId = null
+    Repo.syncSettings()
+    Db.save()
+  },
+
+  // ----- Médicos: um por CPF na conta
   doctors: function () {
     return Db.state.doctors.slice()
   },
@@ -286,78 +424,118 @@ const Repo = {
     return Db.byId(Db.state.doctors, id)
   },
   doctorOf: function (guide) {
-    return Repo.doctor(guide.doctorId) || Db.state.doctors[0]
+    return Repo.doctor(guide.doctorId) || null
+  },
+  doctorsOf: function (contractor) {
+    return contractor.doctorIds.map(Repo.doctor).filter(Boolean)
   },
   syncSettings: function () {
-    const first = Object.assign({}, Db.state.doctors[0])
-    delete first.id
-    delete first.byOperator
-    Db.state.settings = first
+    const d = Db.state.doctors[0]
+    if (!d) return
+    const c = Db.state.contractors.find(function (x) { return x.doctorIds.indexOf(d.id) >= 0 })
+    Db.state.settings = {
+      professionalName: d.professionalName, councilCode: d.councilCode, councilNumber: d.councilNumber, councilUf: d.councilUf, cbos: d.cbos,
+      contractorCpf: d.contractorCpf, contractorName: c ? c.name : '', contractorCnpj: c ? c.cnpj : '', cnes: c ? c.cnes : ''
+    }
   },
-  saveDoctor: function (id, input) {
+  // Salva o médico. Médico novo entra no contratado informado e conta no limite da assinatura.
+  saveDoctor: function (id, input, contractorId) {
     if (!input.professionalName.trim()) throw new Error('Informe o nome do profissional.')
-    // O médico fica vinculado ao CPF, mesmo quando o convênio trabalha com CNPJ.
     const cpf = String(input.contractorCpf || '').replace(/\D/g, '')
     if (cpf.length !== 11) throw new Error('Informe o CPF do médico (11 dígitos).')
     const same = Db.state.doctors.find(function (d) { return d.id !== id && String(d.contractorCpf || '').replace(/\D/g, '') === cpf })
-    if (same) throw new Error('Este CPF já está cadastrado para ' + (same.professionalName || 'outro médico') + '.')
+    if (same) throw new Error('Este CPF já está cadastrado para ' + (same.professionalName || 'outro médico') + '. Use "Adicionar médico já cadastrado".')
+    let saved
     if (id) {
-      Object.assign(Repo.doctor(id), input)
+      saved = Object.assign(Repo.doctor(id), input)
     } else {
-      // Limite de médicos do plano ou liberado no painel (só com o login ligado; ver js/acesso.js)
       if (window.Assinatura) window.Assinatura.checarNovoMedico(Db.state.doctors.length)
-      Db.state.doctors.push(Object.assign({ id: Db.nextId('doctor') }, input))
+      saved = Object.assign({ id: Db.nextId('doctor') }, input)
+      Db.state.doctors.push(saved)
+      if (contractorId) Repo.addDoctorTo(contractorId, saved.id, true)
     }
     Repo.syncSettings()
     Db.save()
+    return saved
   },
-  deleteDoctor: function (id) {
-    if (Db.state.doctors.length === 1) throw new Error('A conta precisa ter ao menos um médico.')
-    if (Db.state.guides.some(function (g) { return g.doctorId === id })) {
-      throw new Error('Este médico possui guias cadastradas e não pode ser excluído.')
+  addDoctorTo: function (contractorId, doctorId, quiet) {
+    const c = Repo.contractor(contractorId)
+    if (c.type === 'cpf' && c.doctorIds.length) throw new Error('Contratado por CPF tem um médico só. Para mais médicos, cadastre um contratado por CNPJ.')
+    if (c.doctorIds.indexOf(doctorId) < 0) c.doctorIds.push(doctorId)
+    if (!quiet) { Repo.syncSettings(); Db.save() }
+  },
+  removeDoctorFrom: function (contractorId, doctorId) {
+    if (Db.state.guides.some(function (g) { return g.contractorId === contractorId && g.doctorId === doctorId })) {
+      throw new Error('Este médico possui guias neste contratado e não pode ser retirado.')
     }
-    Db.state.doctors = Db.state.doctors.filter(function (d) { return d.id !== id })
+    const c = Repo.contractor(contractorId)
+    c.doctorIds = c.doctorIds.filter(function (x) { return x !== doctorId })
+    Repo.dropDoctorIfUnused(doctorId)
     Repo.syncSettings()
     Db.save()
   },
-  // Convênio como ele vale para este médico: CPF, CNPJ ou código ficam no cadastro do médico.
-  operatorFor: function (operatorId, doctor) {
+  dropDoctorIfUnused: function (doctorId) {
+    const used = Db.state.contractors.some(function (c) { return c.doctorIds.indexOf(doctorId) >= 0 }) ||
+      Db.state.guides.some(function (g) { return g.doctorId === doctorId })
+    if (!used) Db.state.doctors = Db.state.doctors.filter(function (d) { return d.id !== doctorId })
+  },
+  dropOperatorIfUnused: function (operatorId) {
+    const used = Db.state.contractors.some(function (c) { return !!c.byOperator[operatorId] }) ||
+      Db.state.guides.some(function (g) { return g.operatorId === operatorId })
+    if (!used) {
+      Db.state.operators = Db.state.operators.filter(function (o) { return o.id !== operatorId })
+      Db.state.patients.forEach(function (p) { if (p.insuranceOperatorId === operatorId) p.insuranceOperatorId = null })
+    }
+  },
+  // Dados que saem na guia: o profissional + o contratado.
+  settingsFor: function (contractor, doctor) {
+    return Object.assign({}, doctor, { contractorName: contractor.name, cnes: contractor.cnes, contractorCnpj: contractor.cnpj })
+  },
+  settingsOf: function (guide) {
+    return Repo.settingsFor(Repo.contractorOf(guide), Repo.doctorOf(guide))
+  },
+  // Convênio como ele vale para este contratado: identificação e valores são dele.
+  operatorFor: function (operatorId, contractor) {
     const operator = Repo.operator(operatorId)
-    if (!operator || !doctor) return operator
-    const own = (doctor.byOperator && doctor.byOperator[operatorId]) || {}
-    return Object.assign({}, operator, { contractorIdType: own.idType || '', providerCode: own.code || '' })
+    if (!operator || !contractor) return operator
+    const own = contractor.byOperator[operatorId] || {}
+    return Object.assign({}, operator, { contractorIdType: own.idType || '', providerCode: own.code || '', prices: own.prices || [] })
   },
-  // Nem todo médico atende todos os convênios: o convênio pode ser excluído do cadastro dele.
-  doctorExcluded: function (doctor, operatorId) {
-    const own = doctor && doctor.byOperator && doctor.byOperator[operatorId]
-    return !!(own && own.excluded)
-  },
-  // O que falta para identificar o médico neste convênio ('' = nada).
-  identProblem: function (doctor, operatorId) {
-    const operator = Repo.operatorFor(operatorId, doctor)
-    if (!operator || !doctor) return ''
+  // O que falta para o contratado usar este convênio ('' = nada).
+  identProblem: function (contractor, doctor, operatorId) {
+    const operator = Repo.operatorFor(operatorId, contractor)
+    if (!operator || !contractor) return ''
     const digits = function (v) { return String(v || '').replace(/\D/g, '') }
-    const who = doctor.professionalName || 'este médico'
+    const who = Repo.contractorName(contractor)
     const where = ' no convênio ' + operator.name + '.'
-    if (Repo.doctorExcluded(doctor, operatorId)) return who + ' não atende o convênio ' + operator.name + '.'
+    if (!contractor.byOperator[operatorId]) return who + ' não atende o convênio ' + operator.name + '.'
     if (!operator.contractorIdType) return 'Falta informar como ' + who + ' é identificado' + where
     if (operator.contractorIdType === 'codigo' && !operator.providerCode.trim()) return 'Falta o código de ' + who + where
-    if (operator.contractorIdType === 'cnpj' && !digits(doctor.contractorCnpj)) return 'Falta o CNPJ de ' + who + ', usado' + where
-    if (operator.contractorIdType === 'cpf' && !digits(doctor.contractorCpf)) return 'Falta o CPF de ' + who + ', usado' + where
+    if (operator.contractorIdType === 'cnpj' && !digits(contractor.cnpj)) return 'Falta o CNPJ de ' + who + ', usado' + where
+    if (operator.contractorIdType === 'cpf' && doctor && !digits(doctor.contractorCpf)) return 'Falta o CPF de ' + doctor.professionalName + ', usado' + where
     return ''
+  },
+  guideProblem: function (guide) {
+    return Repo.identProblem(Repo.contractorOf(guide), Repo.doctorOf(guide), guide.operatorId)
   },
   // Quem recebe do convênio nesta guia. Guias de um lote precisam ter o mesmo contratado.
   contractorKey: function (guide) {
-    const doctor = Repo.doctorOf(guide)
-    const operator = Repo.operatorFor(guide.operatorId, doctor)
+    const settings = Repo.settingsOf(guide)
+    const operator = Repo.operatorFor(guide.operatorId, Repo.contractorOf(guide))
     const digits = function (v) { return String(v || '').replace(/\D/g, '') }
-    if (operator.contractorIdType === 'cpf') return 'cpf:' + digits(doctor.contractorCpf)
-    if (operator.contractorIdType === 'cnpj') return 'cnpj:' + digits(doctor.contractorCnpj)
+    if (operator.contractorIdType === 'cpf') return 'cpf:' + digits(settings.contractorCpf)
+    if (operator.contractorIdType === 'cnpj') return 'cnpj:' + digits(settings.contractorCnpj)
     return 'codigo:' + String(operator.providerCode || '').trim()
   },
 
   // ----- Convênios
+  // Convênios que o contratado em uso atende.
   operators: function () {
+    const c = Repo.current()
+    return Repo.allOperators().filter(function (o) { return !!(c && c.byOperator[o.id]) })
+  },
+  // Todos os convênios da conta (nome, ANS, versão: iguais para todos os contratados).
+  allOperators: function () {
     return Db.state.operators.slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR') })
   },
   operator: function (id) {
@@ -371,28 +549,42 @@ const Repo = {
     const data = {
       name: input.name.trim(),
       ansRegistry: String(input.ansRegistry).replace(/\D/g, ''),
-      providerCode: input.providerCode.trim(),
       tissVersion: input.tissVersion,
       lastLoteNumber: Math.max(0, Math.floor(Number(input.lastLoteNumber) || 0)),
       allowDuplicateGuideNumbers: !!input.allowDuplicateGuideNumbers,
-      contractorIdType: input.contractorIdType,
-      prices: Repo.cleanPrices(input.prices || [])
     }
+    let saved
     if (id) {
-      Object.assign(Repo.operator(id), data)
+      saved = Object.assign(Repo.operator(id), data)
     } else {
       // Limite de convênios do plano (só quando o login está ligado; ver js/acesso.js)
       if (window.Assinatura) window.Assinatura.checarNovoConvenio(Db.state.operators.length)
-      Db.state.operators.push(Object.assign({ id: Db.nextId('operator'), createdAt: Fmt.nowUtc() }, data))
+      saved = Object.assign({ id: Db.nextId('operator'), createdAt: Fmt.nowUtc(), providerCode: '', contractorIdType: 'codigo', prices: [] }, data)
+      Db.state.operators.push(saved)
+    }
+    Db.save()
+    return saved
+  },
+  // Liga o convênio ao contratado, com a identificação e os valores dele.
+  linkOperator: function (contractorId, operatorId, input) {
+    const c = Repo.contractor(contractorId)
+    if (!input.idType) throw new Error('Informe como este contratado é identificado no convênio.')
+    if (input.idType === 'codigo' && !String(input.code || '').trim()) throw new Error('Informe o código deste contratado no convênio.')
+    if (input.idType === 'cnpj' && String(c.cnpj || '').replace(/\D/g, '').length !== 14) throw new Error('Informe o CNPJ do contratado em Prestador.')
+    c.byOperator[operatorId] = {
+      idType: input.idType,
+      code: input.idType === 'codigo' ? input.code.trim() : '',
+      prices: Repo.cleanPrices(input.prices || [])
     }
     Db.save()
   },
-  deleteOperator: function (id) {
-    if (Db.state.guides.some(function (g) { return g.operatorId === id })) {
-      throw new Error('Este convênio possui guias cadastradas e não pode ser excluído.')
+  // Tira o convênio do contratado. Sem nenhum contratado usando, ele sai da conta.
+  unlinkOperator: function (contractorId, operatorId) {
+    if (Db.state.guides.some(function (g) { return g.contractorId === contractorId && g.operatorId === operatorId })) {
+      throw new Error('Este contratado possui guias neste convênio. Exclua ou troque essas guias antes.')
     }
-    Db.state.operators = Db.state.operators.filter(function (o) { return o.id !== id })
-    Db.state.patients.forEach(function (p) { if (p.insuranceOperatorId === id) p.insuranceOperatorId = null })
+    delete Repo.contractor(contractorId).byOperator[operatorId]
+    Repo.dropOperatorIfUnused(operatorId)
     Db.save()
   },
 
@@ -468,14 +660,18 @@ const Repo = {
   },
   // Valor combinado com o convênio para o procedimento, ou null se não houver.
   priceFor: function (operatorId, tableCode, code) {
-    const op = operatorId ? Repo.operator(operatorId) : null
+    const op = operatorId ? Repo.operatorFor(operatorId, Repo.current()) : null
     if (!op) return null
     return op.prices.find(function (p) { return p.tableCode === tableCode && p.code === String(code).trim() }) || null
   },
   // "Salvar valor no convênio" a partir de uma guia.
   savePrice: function (operatorId, input) {
-    const op = operatorId ? Repo.operator(operatorId) : null
+    const op = operatorId ? Repo.operatorFor(operatorId, Repo.current()) : null
     if (!op) throw new Error('Escolha o convênio para salvar o valor na tabela dele.')
+    const link = Repo.current().byOperator[operatorId]
+    if (!link) throw new Error('Este contratado não atende este convênio.')
+    if (!link.prices) link.prices = []
+    op.prices = link.prices
     const code = String(input.code || '').trim()
     if (!code) throw new Error('Informe o código do procedimento.')
     if (!(input.value >= 0)) throw new Error('Valor inválido.')
@@ -500,6 +696,7 @@ const Repo = {
     return Db.state.guides
       .filter(function (g) {
         if (f.operatorId && g.operatorId !== f.operatorId) return false
+        if (f.contractorId && g.contractorId !== f.contractorId) return false
         if (f.doctorId && g.doctorId !== f.doctorId) return false
         if (f.status === 'pending' && g.loteId !== null) return false
         if (f.status === 'batched' && g.loteId === null) return false
@@ -555,7 +752,7 @@ const Repo = {
     const operator = Repo.operator(input.operatorId)
     if (!operator.allowDuplicateGuideNumbers) {
       const dup = Db.state.guides.find(function (g) {
-        return g.operatorId === input.operatorId && g.providerGuideNumber === number && g.id !== id
+        return g.operatorId === input.operatorId && g.contractorId === input.contractorId && g.providerGuideNumber === number && g.id !== id
       })
       if (dup) {
         throw new Error(
@@ -566,7 +763,9 @@ const Repo = {
     }
     const data = Db.clone(input)
     data.providerGuideNumber = number
-    if (!Repo.doctor(data.doctorId)) data.doctorId = Db.state.doctors[0].id
+    const contractor = Repo.contractor(data.contractorId)
+    if (!contractor) throw new Error('Escolha o contratado.')
+    if (contractor.doctorIds.indexOf(data.doctorId) < 0) throw new Error('Escolha o médico executante.')
     data.cardNumber = data.cardNumber.trim()
     if (data.guideType === 'sadt') {
       // A SP/SADT pode ter só outras despesas (ex.: materiais do especialista numa internação).
@@ -671,6 +870,7 @@ const Repo = {
     }
     const input = {
       guideType: 'sadt',
+      contractorId: guide.contractorId,
       doctorId: guide.doctorId,
       operatorId: guide.operatorId,
       patientId: guide.patientId,
@@ -714,7 +914,8 @@ const Repo = {
 
   // ----- Lotes
   lotes: function () {
-    return Db.state.lotes.slice().sort(function (a, b) {
+    const c = Repo.current()
+    return Db.state.lotes.filter(function (l) { return !!c && l.contractorId === c.id }).sort(function (a, b) {
       return b.createdAt.localeCompare(a.createdAt) || b.id - a.id
     })
   },
@@ -739,9 +940,9 @@ const Repo = {
     let semNome = false
     guideIds.forEach(function (id) {
       const g = Repo.guide(id)
-      const doctor = Repo.doctorOf(g)
-      if (!doctor.professionalName.trim()) semNome = true
-      errors = errors.concat(XmlTiss.validateGuide(g, Repo.operatorFor(g.operatorId, doctor), doctor, Repo.patient(g.patientId)))
+      const settings = Repo.settingsOf(g)
+      if (!settings.professionalName.trim()) semNome = true
+      errors = errors.concat(XmlTiss.validateGuide(g, Repo.operatorFor(g.operatorId, Repo.contractorOf(g)), settings, Repo.patient(g.patientId)))
     })
     if (semNome) errors.unshift('Informe o nome do profissional em Prestador.')
     return errors
@@ -770,8 +971,8 @@ const Repo = {
       err.details = errors
       throw err
     }
-    if (guides.some(function (g) { return Repo.contractorKey(g) !== Repo.contractorKey(guides[0]) })) {
-      throw new Error('As guias selecionadas têm contratados diferentes (quem recebe do convênio). Gere um lote para cada contratado: use o filtro de médico em Guias.')
+    if (guides.some(function (g) { return g.contractorId !== guides[0].contractorId || Repo.contractorKey(g) !== Repo.contractorKey(guides[0]) })) {
+      throw new Error('As guias selecionadas têm contratados diferentes (quem recebe do convênio). Gere um lote para cada contratado.')
     }
     // Contador por convênio: um número de lote nunca é reutilizado, mesmo após excluir um lote.
     const operator = Repo.operator(operatorId)
@@ -779,6 +980,7 @@ const Repo = {
     const lote = {
       id: Db.nextId('lote'),
       operatorId: operatorId,
+      contractorId: guides[0].contractorId,
       number: String(operator.lastLoteNumber),
       status: 'gerado',
       hash: '',
@@ -793,15 +995,16 @@ const Repo = {
   loteXml: function (lote) {
     const guides = Repo.loteGuides(lote.id)
     // O cabeçalho do lote identifica o contratado, que é o mesmo em todas as guias.
-    const first = guides[0] ? Repo.doctorOf(guides[0]) : Db.state.doctors[0]
+    const contractor = Repo.contractor(lote.contractorId)
+    const firstDoctor = guides[0] ? Repo.doctorOf(guides[0]) : Repo.doctorsOf(contractor)[0]
     return XmlTiss.buildLoteXml({
       lote: lote,
       guides: guides,
-      operator: Repo.operatorFor(lote.operatorId, first),
-      settings: first,
+      operator: Repo.operatorFor(lote.operatorId, contractor),
+      settings: Repo.settingsFor(contractor, firstDoctor || {}),
       resolve: function (g) {
-        const doctor = Repo.doctorOf(g)
-        return { operator: Repo.operatorFor(g.operatorId, doctor), settings: doctor, doctorName: doctor.professionalName }
+        const settings = Repo.settingsOf(g)
+        return { operator: Repo.operatorFor(g.operatorId, contractor), settings: settings, doctorName: settings.professionalName }
       }
     })
   },
