@@ -1523,7 +1523,7 @@
       '<div class="grid">' +
       '<label class="field c8">Nome do contratado<input id="cname" maxlength="70" value="' + esc(s.contractorName) + '"><span class="hint">Clínica ou o próprio profissional. Vazio = nome do profissional.</span></label>' +
       '<label class="field c4">CNES<input class="code" id="cnes" inputmode="numeric" maxlength="7" value="' + esc(s.cnes) + '"><span class="hint">Vazio = 9999999 (sem CNES)</span></label>' +
-      '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Vai nos convênios que trabalham com CNPJ. Vazio = vai o CPF do médico.</span></label>' +
+      '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Usado nos convênios marcados por CNPJ, logo abaixo.</span></label>' +
       '</div>' +
       '<div class="form-section">Identificação nos convênios</div>' +
       (ops.length
