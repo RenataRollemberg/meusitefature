@@ -1360,10 +1360,9 @@
       '<div class="actions"><a class="btn solid" href="#convenio/novo">Novo convênio</a></div></div>' +
       '<div class="table-wrap">' +
       (ops.length
-        ? '<table class="list"><thead><tr><th>Nome</th><th>Registro ANS</th><th>Identificação</th><th>Versão TISS</th><th class="num">Valores</th><th class="num">Último lote</th><th></th></tr></thead><tbody>' +
+        ? '<table class="list"><thead><tr><th>Nome</th><th>Registro ANS</th><th>Versão TISS</th><th class="num">Valores</th><th class="num">Último lote</th><th></th></tr></thead><tbody>' +
           ops.map(function (o) {
             return '<tr><td>' + esc(o.name) + '</td><td class="mono">' + esc(o.ansRegistry) + '</td>' +
-              '<td>' + esc(TISS.label(ID_TYPES, o.contractorIdType)) + (o.contractorIdType === 'codigo' ? ' <span class="mono muted">' + esc(o.providerCode) + '</span>' : '') + '</td>' +
               '<td class="mono">' + esc(o.tissVersion) + '</td>' +
               '<td class="num">' + (o.prices.length ? o.prices.length + ' proced.' : '<span class="tag amber">sem valores</span>') + '</td>' +
               '<td class="num mono">' + esc(o.lastLoteNumber) + '</td>' +
@@ -1389,8 +1388,6 @@
       '<form class="card" id="f" novalidate><div class="grid">' +
       '<label class="field c8">Nome do convênio <span class="req">*</span><input id="name" value="' + esc(o.name) + '" autofocus></label>' +
       '<label class="field c4">Registro ANS <span class="req">*</span><input class="code" id="ans" inputmode="numeric" maxlength="6" value="' + esc(o.ansRegistry) + '"><span class="hint">6 dígitos, está na carteirinha</span></label>' +
-      '<label class="field c6">Como o convênio identifica você<select id="idtype">' + options(ID_TYPES, o.contractorIdType) + '</select></label>' +
-      '<label class="field c6" id="code-wrap">Código do prestador no convênio<input class="code" id="code" maxlength="14" value="' + esc(o.providerCode) + '"><span class="hint">O código que o convênio deu a você — não o CPF/CNPJ</span></label>' +
       '<label class="field c4">Versão do Padrão TISS<select id="version">' + options(TISS.VERSIONS, o.tissVersion) + '</select></label>' +
       '<label class="field c4">Último número de lote usado<input class="code" id="lastlote" inputmode="numeric" value="' + esc(o.lastLoteNumber) + '"><span class="hint">O próximo lote será este + 1</span></label>' +
       '<label class="check c12"><input type="checkbox" id="dup"' + (o.allowDuplicateGuideNumbers ? ' checked' : '') + '>Aceitar números de guia repetidos neste convênio</label>' +
@@ -1439,19 +1436,16 @@
         return { tableCode: $('[data-pk="tableCode"]', r).value, code: code, description: $('[data-pk="description"]', r).value, value: value }
       }).filter(function (p) { return p.code })
     }
-    function toggleCode() { $('#code-wrap').hidden = $('#idtype').value !== 'codigo' }
-    $('#idtype').addEventListener('change', toggleCode)
-    toggleCode()
     $('#f').addEventListener('submit', function (e) {
       e.preventDefault()
       try {
         Repo.saveOperator(id, {
-          name: $('#name').value, ansRegistry: $('#ans').value, providerCode: $('#code').value,
+          name: $('#name').value, ansRegistry: $('#ans').value, providerCode: o.providerCode || '',
           tissVersion: $('#version').value, lastLoteNumber: $('#lastlote').value,
-          allowDuplicateGuideNumbers: $('#dup').checked, contractorIdType: $('#idtype').value,
+          allowDuplicateGuideNumbers: $('#dup').checked, contractorIdType: o.contractorIdType || 'codigo',
           prices: readPrices()
         })
-        toast('Convênio salvo.')
+        toast(id ? 'Convênio salvo.' : 'Convênio salvo. Em Prestador, informe como cada médico é identificado nele.')
         go('#convenios')
       } catch (err) { showError($('#msg'), err) }
     })
@@ -1511,7 +1505,7 @@
     const others = Repo.doctors().filter(function (d) { return d.id !== id })
     const ops = Repo.operators()
     const byOperator = s.byOperator || {}
-    const OWN_ID = [{ value: '', label: 'Igual ao cadastro do convênio' }].concat(ID_TYPES)
+    const OWN_ID = [{ value: '', label: 'Selecione…' }].concat(ID_TYPES)
     app.innerHTML =
       '<div class="page-head"><div><h1>' + (id ? 'Editar médico' : 'Novo médico') + '</h1><p class="sub">Dados de quem executa o atendimento. Saem nas guias deste médico e nos lotes XML.</p></div></div>' +
       '<form class="card" id="f" novalidate>' +
@@ -1531,17 +1525,25 @@
       '<label class="field c4">CNES<input class="code" id="cnes" inputmode="numeric" maxlength="7" value="' + esc(s.cnes) + '"><span class="hint">Vazio = 9999999 (sem CNES)</span></label>' +
       '<label class="field c6">CNPJ<input class="code" id="cnpj" inputmode="numeric" value="' + esc(s.contractorCnpj) + '"><span class="hint">Vai nos convênios que trabalham com CNPJ. Vazio = vai o CPF do médico.</span></label>' +
       '</div>' +
+      '<div class="form-section">Identificação nos convênios</div>' +
       (ops.length
-        ? '<div class="form-section">Identificação nos convênios</div>' +
-          '<p class="muted">Escolha como este médico atende em cada convênio: um pode ser pelo CPF e outro pelo CNPJ.</p>' +
+        ? '<p class="muted">Como este médico é identificado em cada convênio: um pode ser pelo CPF, outro pelo CNPJ e outro pelo código dele.</p>' +
           '<div class="grid">' + ops.map(function (o) {
             const own = byOperator[o.id] || {}
             return '<label class="field c6">' + esc(o.name) + '<select data-own-type="' + o.id + '">' + options(OWN_ID, own.idType || '') + '</select></label>' +
               '<label class="field c2">Código<input class="code" maxlength="14" data-own-code="' + o.id + '" value="' + esc(own.code || '') + '"></label>'
           }).join('') + '</div>'
-        : '') +
+        : '<div class="alert warn">Nenhum convênio cadastrado ainda. <a href="#convenio/novo">Cadastre um convênio</a> e volte aqui para informar como este médico é identificado nele.</div>') +
       '<div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
       '<a class="btn" href="#prestador">Voltar</a></div></form>'
+    function toggleOwnCode() {
+      $$('[data-own-type]').forEach(function (sel) {
+        const wrap = $('[data-own-code="' + sel.dataset.ownType + '"]').closest('label')
+        wrap.style.visibility = sel.value === 'codigo' ? '' : 'hidden'
+      })
+    }
+    $$('[data-own-type]').forEach(function (sel) { sel.addEventListener('change', toggleOwnCode) })
+    toggleOwnCode()
     if ($('#copy-from')) {
       $('#copy-from').addEventListener('change', function (e) {
         const from = Repo.doctor(Number(e.target.value))
@@ -1557,10 +1559,10 @@
         const own = Object.assign({}, byOperator)
         ops.forEach(function (o) {
           const idType = $('[data-own-type="' + o.id + '"]').value
-          const code = $('[data-own-code="' + o.id + '"]').value.trim()
+          const code = idType === 'codigo' ? $('[data-own-code="' + o.id + '"]').value.trim() : ''
           if (idType === 'codigo' && !code) throw new Error('Informe o código do médico no convênio ' + o.name + '.')
           if (idType === 'cnpj' && !$('#cnpj').value.replace(/\D/g, '')) throw new Error('O convênio ' + o.name + ' está marcado por CNPJ: informe o CNPJ do contratado.')
-          if (idType || code) own[o.id] = { idType: idType, code: code }
+          if (idType) own[o.id] = { idType: idType, code: code }
           else delete own[o.id]
         })
         Repo.saveDoctor(id, {

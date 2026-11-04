@@ -475,9 +475,12 @@ const XmlTiss = (function () {
       push('registro ANS do convênio "' + operator.name + '" deve ter 6 dígitos.')
     }
     const providerCode = onlyDigits(operator.providerCode)
+    if (!operator.contractorIdType) {
+      push('em Prestador, informe como ' + (settings.professionalName || 'o médico') + ' é identificado no convênio "' + operator.name + '" (CPF, CNPJ ou código).')
+    }
     if (operator.contractorIdType === 'codigo') {
       if (!operator.providerCode.trim()) {
-        push('informe o código do prestador no convênio "' + operator.name + '".')
+        push('em Prestador, informe o código de ' + (settings.professionalName || 'o médico') + ' no convênio "' + operator.name + '".')
       } else if (
         providerCode === onlyDigits(settings.contractorCpf) ||
         providerCode === onlyDigits(settings.contractorCnpj)

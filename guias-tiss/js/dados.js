@@ -164,6 +164,20 @@ const Db = (function () {
     out.seq = out.seq || {}
     out.seq.doctor = Math.max(out.seq.doctor || 0, ...out.doctors.map(function (d) { return d.id }))
     out.guides.forEach(function (g) { if (!g.doctorId) g.doctorId = out.doctors[0].id })
+    // A identificação no convênio passou a ser do médico: a que estava no convênio vai só para o
+    // primeiro médico. Os demais precisam informar a sua, para nunca usar o código de outro médico.
+    if (!out.identPorMedico) {
+      const first = out.doctors[0]
+      const digits = function (v) { return String(v || '').replace(/\D/g, '') }
+      first.byOperator = first.byOperator || {}
+      out.operators.forEach(function (o) {
+        const own = first.byOperator[o.id] || {}
+        let idType = own.idType || o.contractorIdType || ''
+        if (!own.idType && idType === 'cnpj' && !digits(first.contractorCnpj) && digits(first.contractorCpf)) idType = 'cpf'
+        first.byOperator[o.id] = { idType: idType, code: own.code || (idType === 'codigo' ? o.providerCode || '' : '') }
+      })
+      out.identPorMedico = true
+    }
   }
 
   function fresh() {
@@ -306,21 +320,12 @@ const Repo = {
     Repo.syncSettings()
     Db.save()
   },
-  // Convênio como ele vale para este médico: a identificação própria do médico, se houver,
-  // substitui a do cadastro do convênio.
+  // Convênio como ele vale para este médico: CPF, CNPJ ou código ficam no cadastro do médico.
   operatorFor: function (operatorId, doctor) {
     const operator = Repo.operator(operatorId)
     if (!operator || !doctor) return operator
     const own = (doctor.byOperator && doctor.byOperator[operatorId]) || {}
-    const out = Object.assign({}, operator)
-    if (own.idType) out.contractorIdType = own.idType
-    if (own.code) out.providerCode = own.code
-    // Convênio por CNPJ e médico sem CNPJ: identifica pelo CPF do médico.
-    const digits = function (v) { return String(v || '').replace(/\D/g, '') }
-    if (!own.idType && out.contractorIdType === 'cnpj' && !digits(doctor.contractorCnpj) && digits(doctor.contractorCpf)) {
-      out.contractorIdType = 'cpf'
-    }
-    return out
+    return Object.assign({}, operator, { contractorIdType: own.idType || '', providerCode: own.code || '' })
   },
   // Quem recebe do convênio nesta guia. Guias de um lote precisam ter o mesmo contratado.
   contractorKey: function (guide) {
