@@ -327,6 +327,19 @@ const Repo = {
     const own = (doctor.byOperator && doctor.byOperator[operatorId]) || {}
     return Object.assign({}, operator, { contractorIdType: own.idType || '', providerCode: own.code || '' })
   },
+  // O que falta para identificar o médico neste convênio ('' = nada).
+  identProblem: function (doctor, operatorId) {
+    const operator = Repo.operatorFor(operatorId, doctor)
+    if (!operator || !doctor) return ''
+    const digits = function (v) { return String(v || '').replace(/\D/g, '') }
+    const who = doctor.professionalName || 'este médico'
+    const where = ' no convênio ' + operator.name + '.'
+    if (!operator.contractorIdType) return 'Falta informar como ' + who + ' é identificado' + where
+    if (operator.contractorIdType === 'codigo' && !operator.providerCode.trim()) return 'Falta o código de ' + who + where
+    if (operator.contractorIdType === 'cnpj' && !digits(doctor.contractorCnpj)) return 'Falta o CNPJ de ' + who + ', usado' + where
+    if (operator.contractorIdType === 'cpf' && !digits(doctor.contractorCpf)) return 'Falta o CPF de ' + who + ', usado' + where
+    return ''
+  },
   // Quem recebe do convênio nesta guia. Guias de um lote precisam ter o mesmo contratado.
   contractorKey: function (guide) {
     const doctor = Repo.doctorOf(guide)

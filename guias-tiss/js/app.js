@@ -593,7 +593,7 @@
         ? '<label class="field c4">Nº da guia de solicitação de internação <span class="req">*</span><input class="code" id="h-request" maxlength="20" value="' + esc(hon.requestGuideNumber) + '"></label>' +
           '<label class="field c4">Senha<input class="code" id="h-password" maxlength="20" value="' + esc(hon.password) + '"></label>'
         : '') +
-      '</div>'
+      '</div><div id="ident-warn"></div>'
 
     const benef =
       '<div class="form-section">Beneficiário</div><div class="grid">' +
@@ -784,6 +784,16 @@
     }
     $('#g-card').addEventListener('input', updateCardHint)
     $('#g-operator').addEventListener('change', updateCardHint)
+    function updateIdentWarn() {
+      const doctor = Repo.doctor($('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId)
+      const problem = Repo.identProblem(doctor, Number($('#g-operator').value) || null)
+      $('#ident-warn').innerHTML = problem
+        ? '<div class="alert warn">' + esc(problem) + ' <a href="#prestador/' + doctor.id + '">Completar em Prestador</a></div>'
+        : ''
+    }
+    $('#g-operator').addEventListener('change', updateIdentWarn)
+    if ($('#g-doctor')) $('#g-doctor').addEventListener('change', updateIdentWarn)
+    updateIdentWarn()
 
     $('#qp-open').addEventListener('click', function () {
       // O que foi digitado na busca já vai para o cadastro: números viram CPF, o resto é o nome.
@@ -1476,7 +1486,9 @@
       '<div id="msg"></div><div class="table-wrap"><table class="list"><thead><tr><th>Profissional</th><th>Conselho</th><th>CBO-S</th><th>Contratado</th><th class="num">Guias</th><th></th></tr></thead><tbody>' +
       doctors.map(function (d) {
         const count = Db.state.guides.filter(function (g) { return g.doctorId === d.id }).length
-        return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong></td>' +
+        const missing = Repo.operators().filter(function (o) { return Repo.identProblem(d, o.id) }).map(function (o) { return o.name })
+        return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong>' +
+          (missing.length ? '<br><span class="tag amber">Falta identificação: ' + esc(missing.join(', ')) + '</span>' : '') + '</td>' +
           '<td class="mono nowrap">' + esc(d.councilNumber) + (d.councilNumber ? ' / ' + esc(TISS.label(TISS.UFS, d.councilUf)) : '') + '</td>' +
           '<td class="mono">' + esc(d.cbos) + '</td>' +
           '<td>' + esc(d.contractorName || d.professionalName) + '</td>' +

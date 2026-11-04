@@ -362,6 +362,9 @@ const Impressao = (function () {
 
   // Abre a guia numa janela própria e chama a impressão do navegador.
   function print(guide) {
+    // Não imprime guia com o "Código na Operadora" em branco.
+    const problem = Repo.identProblem(Repo.doctorOf(guide), guide.operatorId)
+    if (problem) throw new Error(problem + ' Complete em Prestador para imprimir a guia.')
     const win = window.open('', '_blank')
     if (!win) throw new Error('O navegador bloqueou a janela de impressão. Permita pop-ups para esta página.')
     win.document.open()
