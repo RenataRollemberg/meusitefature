@@ -1486,7 +1486,7 @@
       '<div id="msg"></div><div class="table-wrap"><table class="list"><thead><tr><th>Profissional</th><th>Conselho</th><th>CBO-S</th><th>Contratado</th><th class="num">Guias</th><th></th></tr></thead><tbody>' +
       doctors.map(function (d) {
         const count = Db.state.guides.filter(function (g) { return g.doctorId === d.id }).length
-        const missing = Repo.operators().filter(function (o) { return Repo.identProblem(d, o.id) }).map(function (o) { return o.name })
+        const missing = Repo.operators().filter(function (o) { return !Repo.doctorExcluded(d, o.id) && Repo.identProblem(d, o.id) }).map(function (o) { return o.name })
         return '<tr><td><strong>' + esc(d.professionalName || 'Sem nome') + '</strong>' +
           (missing.length ? '<br><span class="tag amber">Falta identificação: ' + esc(missing.join(', ')) + '</span>' : '') + '</td>' +
           '<td class="mono nowrap">' + esc(d.councilNumber) + (d.councilNumber ? ' / ' + esc(TISS.label(TISS.UFS, d.councilUf)) : '') + '</td>' +
@@ -1540,14 +1540,43 @@
       '<div class="form-section">Identificação nos convênios</div>' +
       (ops.length
         ? '<p class="muted">Como este médico é identificado em cada convênio: um pode ser pelo CPF, outro pelo CNPJ e outro pelo código dele.</p>' +
-          '<div class="grid">' + ops.map(function (o) {
+          ops.map(function (o) {
             const own = byOperator[o.id] || {}
-            return '<label class="field c6">' + esc(o.name) + '<select data-own-type="' + o.id + '">' + options(OWN_ID, own.idType || '') + '</select></label>' +
-              '<label class="field c2">Código<input class="code" maxlength="14" data-own-code="' + o.id + '" value="' + esc(own.code || '') + '"></label>'
-          }).join('') + '</div>'
+            return '<div class="grid" data-own-row="' + o.id + '" style="margin-top:12px"' + (own.excluded ? ' hidden' : '') + '>' +
+              '<label class="field c6">' + esc(o.name) + '<select data-own-type="' + o.id + '">' + options(OWN_ID, own.idType || '') + '</select></label>' +
+              '<label class="field c2">Código<input class="code" maxlength="14" data-own-code="' + o.id + '" value="' + esc(own.code || '') + '"></label>' +
+              '<div class="c2" style="align-self:end"><button type="button" class="btn small danger" data-own-remove="' + o.id + '">Excluir</button></div></div>'
+          }).join('') +
+          '<div class="grid" id="own-add" style="margin-top:12px"><label class="field c6">Adicionar convênio de volta<select id="own-add-select"></select></label></div>'
         : '<div class="alert warn">Nenhum convênio cadastrado ainda. <a href="#convenio/novo">Cadastre um convênio</a> e volte aqui para informar como este médico é identificado nele.</div>') +
       '<div id="msg"></div><div class="form-actions"><button class="btn solid" type="submit">Salvar</button>' +
       '<a class="btn" href="#prestador">Voltar</a></div></form>'
+    function refreshOwnAdd() {
+      if (!$('#own-add')) return
+      const removed = ops.filter(function (o) { return $('[data-own-row="' + o.id + '"]').hidden })
+      $('#own-add').hidden = !removed.length
+      $('#own-add-select').innerHTML = options(removed.map(function (o) { return { value: o.id, label: o.name } }), '', 'Escolha um convênio…')
+    }
+    $$('[data-own-remove]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const opId = Number(b.dataset.ownRemove)
+        const count = id ? Db.state.guides.filter(function (g) { return g.doctorId === id && g.operatorId === opId }).length : 0
+        if (count) {
+          return showError($('#msg'), new Error('Este médico tem ' + count + (count === 1 ? ' guia' : ' guias') + ' em ' + Repo.operator(opId).name + '. Exclua ou troque essas guias antes de excluir o convênio do cadastro dele.'))
+        }
+        $('#msg').innerHTML = ''
+        $('[data-own-row="' + opId + '"]').hidden = true
+        refreshOwnAdd()
+      })
+    })
+    if ($('#own-add-select')) {
+      $('#own-add-select').addEventListener('change', function (e) {
+        if (!e.target.value) return
+        $('[data-own-row="' + e.target.value + '"]').hidden = false
+        refreshOwnAdd()
+      })
+    }
+    refreshOwnAdd()
     function toggleOwnCode() {
       $$('[data-own-type]').forEach(function (sel) {
         const wrap = $('[data-own-code="' + sel.dataset.ownType + '"]').closest('label')
@@ -1570,6 +1599,10 @@
       try {
         const own = Object.assign({}, byOperator)
         ops.forEach(function (o) {
+          if ($('[data-own-row="' + o.id + '"]').hidden) {
+            own[o.id] = { excluded: true }
+            return
+          }
           const idType = $('[data-own-type="' + o.id + '"]').value
           const code = idType === 'codigo' ? $('[data-own-code="' + o.id + '"]').value.trim() : ''
           if (idType === 'codigo' && !code) throw new Error('Informe o código do médico no convênio ' + o.name + '.')

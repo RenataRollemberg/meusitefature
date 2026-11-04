@@ -327,6 +327,11 @@ const Repo = {
     const own = (doctor.byOperator && doctor.byOperator[operatorId]) || {}
     return Object.assign({}, operator, { contractorIdType: own.idType || '', providerCode: own.code || '' })
   },
+  // Nem todo médico atende todos os convênios: o convênio pode ser excluído do cadastro dele.
+  doctorExcluded: function (doctor, operatorId) {
+    const own = doctor && doctor.byOperator && doctor.byOperator[operatorId]
+    return !!(own && own.excluded)
+  },
   // O que falta para identificar o médico neste convênio ('' = nada).
   identProblem: function (doctor, operatorId) {
     const operator = Repo.operatorFor(operatorId, doctor)
@@ -334,6 +339,7 @@ const Repo = {
     const digits = function (v) { return String(v || '').replace(/\D/g, '') }
     const who = doctor.professionalName || 'este médico'
     const where = ' no convênio ' + operator.name + '.'
+    if (Repo.doctorExcluded(doctor, operatorId)) return who + ' não atende o convênio ' + operator.name + '.'
     if (!operator.contractorIdType) return 'Falta informar como ' + who + ' é identificado' + where
     if (operator.contractorIdType === 'codigo' && !operator.providerCode.trim()) return 'Falta o código de ' + who + where
     if (operator.contractorIdType === 'cnpj' && !digits(doctor.contractorCnpj)) return 'Falta o CNPJ de ' + who + ', usado' + where
