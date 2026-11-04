@@ -20,7 +20,9 @@
   window.Assinatura = {
     cliente: function () { return cliente },
     limites: function () {
-      return cliente ? Planos.limites(cliente) : null
+      // No período grátis (7 dias) não há limite de médicos nem de convênios.
+      if (!cliente || (cliente.status || 'teste') === 'teste') return null
+      return Planos.limites(cliente)
     },
     // Chamado antes de cadastrar um convênio novo.
     checarNovoConvenio: function (quantidadeAtual) {
