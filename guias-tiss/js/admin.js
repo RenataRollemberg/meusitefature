@@ -124,14 +124,32 @@
     })
   }
 
+  // Contas criadas pelo site depois da última vez que você marcou como vistas.
+  // Sem marcação ainda neste navegador, considera os últimos 7 dias.
+  const CHAVE_VISTAS = 'guias-tiss:painel:contas-vistas'
+
+  function vistasEm() {
+    try {
+      const salvo = Number(localStorage.getItem(CHAVE_VISTAS))
+      if (salvo) return salvo
+    } catch (e) { /* segue com o padrão */ }
+    return Date.now() - 7 * 24 * 60 * 60 * 1000
+  }
+
+  function contaNova(c) {
+    const criada = paraData(c.criadoEm)
+    return c.origem === 'site' && !!criada && criada.getTime() > vistasEm()
+  }
+
   function telaLista() {
     const ativos = clientes.filter(function (c) { return c.status === 'ativo' })
     const receita = ativos.reduce(function (s, c) { return s + Planos.cobranca(c).total }, 0)
     const comFaturista = clientes.filter(Planos.faturistaAtivo).length
     const termo = filtro.trim().toLowerCase()
+    const novas = clientes.filter(contaNova)
     const lista = clientes.filter(function (c) {
       return !termo || (c.nome || '').toLowerCase().indexOf(termo) >= 0 || c.id.indexOf(termo) >= 0
-    })
+    }).sort(function (a, b) { return Number(contaNova(b)) - Number(contaNova(a)) })
 
     painel.innerHTML =
       '<div class="page-head"><div><h1>Clientes</h1><p class="sub">Plano, situação e serviço Faturista de cada médico ou clínica.</p></div>' +
@@ -142,18 +160,24 @@
       '<div class="card"><span class="label">Em período grátis</span><strong>' + clientes.filter(function (c) { return (c.status || 'teste') === 'teste' }).length + '</strong></div>' +
       '<div class="card"><span class="label">Com Faturista</span><strong>' + comFaturista + '</strong></div>' +
       '</div>' +
+      (novas.length
+        ? '<div class="alert warn"><strong>' + novas.length + (novas.length === 1 ? ' conta nova' : ' contas novas') + '</strong> criada' + (novas.length === 1 ? '' : 's') + ' pelo site: ' +
+          esc(novas.map(function (c) { return c.id }).join(', ')) +
+          ' <button type="button" class="link-btn" id="marcar-vistas">Marcar como vistas</button></div>'
+        : '') +
       '<div class="filters"><label class="field">Buscar<input id="busca" placeholder="Nome ou e-mail" value="' + esc(filtro) + '"></label></div>' +
       '<div class="table-wrap">' + (lista.length
-        ? '<table class="list"><thead><tr><th>Cliente</th><th>Plano</th><th>Faturista</th><th class="num">Total/mês</th><th>Situação</th><th>Confirmou</th><th></th></tr></thead><tbody>' +
+        ? '<table class="list"><thead><tr><th>Cliente</th><th>Plano</th><th>Faturista</th><th class="num">Total/mês</th><th>Situação</th><th>Criada em</th><th>Confirmou</th><th></th></tr></thead><tbody>' +
           lista.map(function (c) {
             const plano = Planos.get(c.plano)
             const fat = Planos.faturistaAtivo(c)
-            return '<tr><td><strong>' + esc(c.nome || '—') + '</strong><br><span class="mono muted">' + esc(c.id) + '</span></td>' +
+            return '<tr><td><strong>' + esc(c.nome || '—') + '</strong>' + (contaNova(c) ? ' <span class="tag amber">Nova</span>' : '') + '<br><span class="mono muted">' + esc(c.id) + '</span></td>' +
               '<td>' + (plano ? esc(plano.nome) : '<span class="muted">—</span>') + '</td>' +
               '<td>' + (fat ? Planos.money(c.faturista.valor) + '<br><span class="muted">' + (c.faturista.incluiPlataforma ? 'inclui plataforma' : 'somado ao plano') + '</span>' +
                 (Planos.limites(c) && Planos.limites(c).personalizado ? '<br><span class="muted">' + esc(Planos.limitesTexto(Planos.limites(c))) + '</span>' : '') : '<span class="muted">—</span>') + '</td>' +
               '<td class="num">' + Planos.money(Planos.cobranca(c).total) + '</td>' +
               '<td>' + statusTag(c) + (c.status === 'teste' && c.testeAte ? '<br><span class="muted">até ' + esc(dataTexto(c.testeAte)) + '</span>' : '') + '</td>' +
+              '<td class="nowrap">' + (c.criadoEm ? esc(dataTexto(c.criadoEm)) : '<span class="muted">—</span>') + '</td>' +
               '<td>' + (c.aceitoEm ? esc(dataTexto(c.aceitoEm)) : c.origem === 'site' ? '<span class="muted">criou sozinho</span>' : '<span class="muted">ainda não entrou</span>') + '</td>' +
               '<td><button class="btn small" data-editar="' + esc(c.id) + '">Editar</button></td></tr>'
           }).join('') + '</tbody></table>'
@@ -161,6 +185,12 @@
       '</div>'
 
     $('#novo').addEventListener('click', function () { telaForm(null) })
+    if ($('#marcar-vistas')) {
+      $('#marcar-vistas').addEventListener('click', function () {
+        try { localStorage.setItem(CHAVE_VISTAS, String(Date.now())) } catch (e) { toast('Este navegador não guardou a marcação.', true) }
+        telaLista()
+      })
+    }
     $('#busca').addEventListener('input', function (e) {
       filtro = e.target.value
       const pos = e.target.selectionStart

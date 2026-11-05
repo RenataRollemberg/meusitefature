@@ -261,12 +261,32 @@
           termosVersao: TERMOS_VERSAO,
           termosAceitoEm: firebase.firestore.FieldValue.serverTimestamp()
         }
-        return comTempo(ref.set(novo), 8000).then(function () { return { db: db, dados: novo } })
+        return comTempo(ref.set(novo), 8000).then(function () {
+          avisarNovaConta()
+          return { db: db, dados: novo }
+        })
       })
     }).catch(function (err) {
       console.warn('Guias TISS: cadastro do cliente indisponível —', err && err.message)
       return { db: null, dados: null }
     })
+  }
+
+  // Avisa a Remasol por e-mail. Se falhar, nada muda para o cliente: a conta aparece no painel.
+  function avisarNovaConta() {
+    if (typeof AVISO_NOVA_CONTA_URL === 'undefined' || !AVISO_NOVA_CONTA_URL) return
+    try {
+      fetch(AVISO_NOVA_CONTA_URL, {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          _subject: 'Guias TISS: nova conta criada',
+          _captcha: 'false',
+          mensagem: 'Uma nova conta foi criada no Guias TISS. Veja os dados no painel: https://guiaxmltiss.com.br/guias-tiss/admin.html'
+        })
+      }).catch(function () { /* o painel continua mostrando a conta */ })
+    } catch (e) { /* idem */ }
   }
 
   // Rede de segurança: nunca deixa o app escondido por mais de 15 segundos.

@@ -27,6 +27,10 @@ const FIREBASE_CONFIG = {
 // Versão dos Termos de uso (termos.html). Ao subir a versão, cada cliente aceita de novo na próxima entrada.
 const TERMOS_VERSAO = '1.0'
 
+// Aviso por e-mail quando alguém cria conta. Vai só o aviso, sem nome nem e-mail do cliente:
+// os dados da conta ficam no painel (admin.html). Vazio = sem e-mail.
+const AVISO_NOVA_CONTA_URL = 'https://formsubmit.co/ajax/remasolfaturetiss@gmail.com'
+
 // Dias de teste grátis contados a partir da criação da conta.
 const DIAS_TESTE = 7
 
