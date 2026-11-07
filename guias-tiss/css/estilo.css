@@ -262,3 +262,30 @@ pre.xml {
   .c2, .c3, .c4, .c5 { grid-column: span 12; }
   .filters label.field { min-width: 0; flex: 1 1 100%; }
 }
+
+/* Losango de pendência: cadastro rápido de beneficiário aberto e ainda não salvo. */
+.pending-diamond {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  background: var(--amber);
+  transform: rotate(45deg);
+  vertical-align: 1px;
+  flex: none;
+  animation: diamond-pulse 1.4s ease-in-out infinite;
+}
+@keyframes diamond-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--amber) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--amber) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .pending-diamond { animation: none; } }
+.link-btn.pending { color: var(--amber); font-weight: 700; }
+.quick-pending {
+  padding: 12px;
+  border: 2px solid var(--amber);
+  border-radius: var(--radius);
+  background: var(--amber-soft);
+}
+.quick-pending-note { display: flex; align-items: center; font-size: 0.9rem; color: var(--amber); }
+.btn.btn-pending { border-color: var(--amber); color: var(--amber); font-weight: 700; }

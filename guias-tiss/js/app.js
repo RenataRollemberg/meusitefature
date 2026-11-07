@@ -444,7 +444,7 @@
       hon: type === 'honorarios' ? emptyHon() : null,
       operatorId: operatorId,
       patientId: null,
-      providerGuideNumber: Repo.nextProviderGuideNumber(),
+      providerGuideNumber: Repo.nextProviderGuideNumber(operatorId),
       operatorGuideNumber: '',
       cardNumber: '',
       newborn: false,
@@ -607,7 +607,7 @@
         ? '<label class="field c12">Médico executante <span class="req">*</span><select id="g-doctor"' + (g.linkedHonorId ? ' disabled' : '') + '>' + doctorOptions(g.doctorId) + '</select></label>'
         : '') +
       '<label class="field c4">Convênio <span class="req">*</span><select id="g-operator">' + operatorOptions(g.operatorId, 'Selecione…') + '</select></label>' +
-      '<label class="field c4">Nº da guia no prestador <span class="req">*</span><input class="code" id="g-number" maxlength="20" value="' + esc(g.providerGuideNumber) + '"></label>' +
+      '<label class="field c4">Nº da guia no prestador <span class="req">*</span><input class="code" id="g-number" maxlength="20" value="' + esc(g.providerGuideNumber) + '"><span class="hint" id="g-number-hint"></span></label>' +
       '<label class="field c4">Nº da guia no convênio<input class="code" id="g-opnumber" maxlength="20" value="' + esc(g.operatorGuideNumber) + '"></label>' +
       (isSadt
         ? '<label class="field c3">Nº da guia principal<input class="code" id="s-main" maxlength="20" value="' + esc(sadt.mainGuideNumber) + '"></label>' +
@@ -760,7 +760,10 @@
       if (btn) {
         const t = e.target.value.trim()
         const none = t && $('#g-patient').options.length <= 1
-        btn.textContent = none ? '+ Não encontrado — cadastrar “' + t + '”' : '+ Cadastrar novo beneficiário aqui'
+        btn.innerHTML = none
+          ? '<span class="pending-diamond" aria-hidden="true"></span>Não encontrado — cadastrar “' + esc(t) + '”'
+          : '+ Cadastrar novo beneficiário aqui'
+        btn.classList.toggle('pending', !!none)
       }
       // Se a busca deixou um único beneficiário, ele já fica escolhido.
       const opts = $('#g-patient').options
@@ -780,6 +783,7 @@
         if (opId && Repo.current().byOperator[opId] && String(opId) !== $('#g-operator').value) {
           $('#g-operator').value = String(opId)
           applyOperatorPrice()
+          updateGuideNumber()
         }
       }
       if (!p) return
@@ -810,6 +814,28 @@
     }
     $('#g-card').addEventListener('input', updateCardHint)
     $('#g-operator').addEventListener('change', updateCardHint)
+
+    // --- nº da guia: automático (sequencial) só se o convênio estiver configurado assim;
+    // senão fica em branco para digitar. Um número digitado à mão nunca é trocado.
+    let autoNumber = editing ? null : g.providerGuideNumber
+    function updateGuideNumber(e) {
+      const typing = !!(e && e.type === 'input')
+      const hint = $('#g-number-hint')
+      const field = $('#g-number')
+      if (!hint || !field) return
+      if (editing) { hint.textContent = ''; return }
+      const op = Repo.operator(Number($('#g-operator').value) || null)
+      if (!typing && (field.value.trim() === '' || field.value === autoNumber)) {
+        autoNumber = Repo.nextProviderGuideNumber(op ? op.id : null)
+        field.value = autoNumber
+      }
+      hint.textContent = !op ? '' : op.sequentialGuideNumbers
+        ? (field.value === autoNumber ? 'Sequencial deste convênio' : '')
+        : 'Este convênio não usa número sequencial — digite o número'
+    }
+    $('#g-operator').addEventListener('change', updateGuideNumber)
+    $('#g-number').addEventListener('input', updateGuideNumber)
+    updateGuideNumber()
     function updateIdentWarn() {
       const opId = Number($('#g-operator').value) || null
       const problem = Repo.identProblem(Repo.contractor(g.contractorId), Repo.doctor($('#g-doctor') ? Number($('#g-doctor').value) : g.doctorId), opId)
@@ -826,10 +852,11 @@
       const typed = $('#g-psearch').value.trim()
       const isCpf = /^[\d.\-\s]+$/.test(typed)
       $('#quick-patient').innerHTML =
-        '<div class="grid" style="padding:12px;border:1px dashed var(--line-strong);border-radius:6px">' +
+        '<div class="grid quick-pending">' +
+        '<p class="c12 quick-pending-note"><span class="pending-diamond" aria-hidden="true"></span>Cadastro pendente: termine de digitar e clique em&nbsp;<strong>Cadastrar</strong></p>' +
         '<label class="field c6">Nome <span class="req">*</span><input id="qp-name" value="' + esc(isCpf ? '' : typed) + '"></label>' +
         '<label class="field c3">CPF<input id="qp-cpf" inputmode="numeric" value="' + esc(isCpf ? typed : '') + '"></label>' +
-        '<div class="c3" style="display:flex;align-items:flex-end"><button type="button" class="btn small" id="qp-save">Cadastrar</button></div></div>'
+        '<div class="c3" style="display:flex;align-items:flex-end"><button type="button" class="btn small btn-pending" id="qp-save"><span class="pending-diamond" aria-hidden="true"></span>Cadastrar</button></div></div>'
       const nameInput = $('#qp-name')
       nameInput.focus()
       nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length)
@@ -1100,6 +1127,10 @@
       const andPrint = !!(e.submitter && e.submitter.dataset.printAfter)
       const msg = $('#form-msg')
       try {
+        if ($('#qp-save') && !(Number($('#g-patient').value) || null)) {
+          $('#qp-name').focus()
+          throw new Error('O beneficiário novo ainda não foi cadastrado. Termine de digitar e clique em Cadastrar (losango).')
+        }
         const val = function (sel, fallback) { const el = $(sel); return el ? el.value : fallback }
         const input = {
           guideType: isSadt ? 'sadt' : isHon ? 'honorarios' : 'consulta',
@@ -1427,7 +1458,7 @@
   }
 
   function viewOperatorForm(id) {
-    const o = id ? Repo.operator(id) : { name: '', ansRegistry: '', providerCode: '', tissVersion: TISS.DEFAULT_VERSION, lastLoteNumber: 0, allowDuplicateGuideNumbers: false, contractorIdType: 'codigo', prices: [] }
+    const o = id ? Repo.operator(id) : { name: '', ansRegistry: '', providerCode: '', tissVersion: TISS.DEFAULT_VERSION, lastLoteNumber: 0, allowDuplicateGuideNumbers: false, sequentialGuideNumbers: false, contractorIdType: 'codigo', prices: [] }
     if (!o) return go('#convenios')
     const c = Repo.current()
     const linked = !!(id && c.byOperator[id])
@@ -1453,6 +1484,7 @@
       '<label class="field c4">Registro ANS <span class="req">*</span><input class="code" id="ans" inputmode="numeric" maxlength="6" value="' + esc(o.ansRegistry) + '"><span class="hint">6 dígitos, está na carteirinha</span></label>' +
       '<label class="field c4">Versão do Padrão TISS<select id="version">' + options(TISS.VERSIONS, o.tissVersion) + '</select></label>' +
       '<label class="field c4">Último número de lote usado<input class="code" id="lastlote" inputmode="numeric" value="' + esc(o.lastLoteNumber) + '"><span class="hint">O próximo lote será este + 1</span></label>' +
+      '<label class="check c12"><input type="checkbox" id="seq"' + (o.sequentialGuideNumbers ? ' checked' : '') + '>Usar número de guia sequencial neste convênio <span class="hint">(a nova guia já vem com o próximo número; desmarcado, o campo fica em branco para digitar)</span></label>' +
       '<label class="check c12"><input type="checkbox" id="dup"' + (o.allowDuplicateGuideNumbers ? ' checked' : '') + '>Aceitar números de guia repetidos neste convênio</label>' +
       '</div>' +
       '<p class="hint">Nome, registro ANS, versão e número do lote valem para todos os contratados da conta.</p>' +
@@ -1514,7 +1546,8 @@
         const saved = Repo.saveOperator(id, {
           name: $('#name').value, ansRegistry: $('#ans').value,
           tissVersion: $('#version').value, lastLoteNumber: $('#lastlote').value,
-          allowDuplicateGuideNumbers: $('#dup').checked
+          allowDuplicateGuideNumbers: $('#dup').checked,
+          sequentialGuideNumbers: $('#seq').checked
         })
         Repo.linkOperator(c.id, saved.id, { idType: $('#own-type').value, code: $('#own-code').value, prices: priceList })
         toast('Convênio salvo.')

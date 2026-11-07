@@ -260,7 +260,10 @@ const Db = (function () {
   // levados para lá; o "valor padrão" não é usado (cada convênio paga o seu).
   function migrate(data) {
     const out = Object.assign(empty(), data)
-    out.operators.forEach(function (o) { if (!Array.isArray(o.prices)) o.prices = [] })
+    out.operators.forEach(function (o) {
+      if (!Array.isArray(o.prices)) o.prices = []
+      if (typeof o.sequentialGuideNumbers !== 'boolean') o.sequentialGuideNumbers = false
+    })
     if (Array.isArray(data.procedures)) {
       data.procedures.forEach(function (proc) {
         (proc.prices || []).forEach(function (pr) {
@@ -552,6 +555,7 @@ const Repo = {
       tissVersion: input.tissVersion,
       lastLoteNumber: Math.max(0, Math.floor(Number(input.lastLoteNumber) || 0)),
       allowDuplicateGuideNumbers: !!input.allowDuplicateGuideNumbers,
+      sequentialGuideNumbers: !!input.sequentialGuideNumbers,
     }
     let saved
     if (id) {
@@ -727,7 +731,19 @@ const Repo = {
     // CPF ou carteirinha digitados com ou sem pontuação
     return digits.length >= 3 && text.replace(/\D/g, ' ').split(' ').concat([String(p && p.cpf || '').replace(/\D/g, '')]).some(function (t) { return t.includes(digits) })
   },
-  nextProviderGuideNumber: function () {
+  // Número automático só para convênio configurado com numeração sequencial: o maior número
+  // já usado nas guias desse convênio + 1. Nos demais convênios o campo fica em branco.
+  nextProviderGuideNumber: function (operatorId) {
+    const op = operatorId ? Repo.operator(operatorId) : null
+    if (!op || !op.sequentialGuideNumbers) return ''
+    let max = 0
+    Db.state.guides.forEach(function (g) {
+      if (g.operatorId === op.id && /^\d+$/.test(g.providerGuideNumber)) max = Math.max(max, Number(g.providerGuideNumber))
+    })
+    return String(max + 1)
+  },
+  // Para a SP/SADT de materiais gerada pela guia de honorários (precisa sempre de número).
+  nextAnyGuideNumber: function () {
     let max = 0
     Db.state.guides.forEach(function (g) {
       if (/^\d+$/.test(g.providerGuideNumber)) max = Math.max(max, Number(g.providerGuideNumber))
@@ -874,7 +890,7 @@ const Repo = {
       doctorId: guide.doctorId,
       operatorId: guide.operatorId,
       patientId: guide.patientId,
-      providerGuideNumber: linked ? linked.providerGuideNumber : Repo.nextProviderGuideNumber(),
+      providerGuideNumber: linked ? linked.providerGuideNumber : (Repo.nextProviderGuideNumber(guide.operatorId) || Repo.nextAnyGuideNumber()),
       operatorGuideNumber: guide.operatorGuideNumber,
       cardNumber: guide.cardNumber,
       newborn: guide.newborn,
