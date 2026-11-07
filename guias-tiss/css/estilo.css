@@ -289,3 +289,17 @@ pre.xml {
 }
 .quick-pending-note { display: flex; align-items: center; font-size: 0.9rem; color: var(--amber); }
 .btn.btn-pending { border-color: var(--amber); color: var(--amber); font-weight: 700; }
+
+/* Janela de confirmação com senha (excluir contratado). */
+.pw-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+}
+.pw-dialog::backdrop { background: rgba(15, 37, 71, 0.45); }
+.pw-dialog h2 { margin-bottom: 8px; }
+.pw-dialog p { margin-bottom: 12px; }
+.row-actions .btn + .btn { margin-left: 6px; }

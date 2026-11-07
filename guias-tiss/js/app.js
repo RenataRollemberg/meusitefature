@@ -1579,6 +1579,60 @@
     return c.type === 'cnpj' ? 'CNPJ' : 'CPF'
   }
 
+  // Excluir contratado pede a senha de login (Firebase) por segurança.
+  function deleteContractorWithPassword(c, done) {
+    if (!c) return
+    if (Db.state.guides.some(function (g) { return g.contractorId === c.id })) {
+      return toast('Este contratado possui guias cadastradas e não pode ser excluído.', true)
+    }
+    const old = document.getElementById('pw-dialog')
+    if (old) old.remove()
+    const dlg = document.createElement('dialog')
+    dlg.id = 'pw-dialog'
+    dlg.className = 'pw-dialog'
+    dlg.innerHTML =
+      '<form id="pw-form" novalidate>' +
+      '<h2>Excluir contratado</h2>' +
+      '<p>Você vai excluir <strong>' + esc(Repo.contractorName(c)) + '</strong>. Médicos e convênios que só ele usa também saem. Não dá para desfazer.</p>' +
+      '<label class="field">Digite a sua senha de login para confirmar<input type="password" id="pw-input" autocomplete="current-password"></label>' +
+      '<div id="pw-msg"></div>' +
+      '<div class="form-actions"><button type="submit" class="btn danger" id="pw-ok">Excluir</button>' +
+      '<button type="button" class="btn" id="pw-cancel">Cancelar</button></div></form>'
+    document.body.appendChild(dlg)
+    dlg.showModal()
+    $('#pw-input', dlg).focus()
+    $('#pw-cancel', dlg).addEventListener('click', function () { dlg.close(); dlg.remove() })
+    $('#pw-form', dlg).addEventListener('submit', function (e) {
+      e.preventDefault()
+      const pw = $('#pw-input', dlg).value
+      if (!pw) return showError($('#pw-msg', dlg), new Error('Digite a senha.'))
+      $('#pw-ok', dlg).disabled = true
+      $('#pw-msg', dlg).innerHTML = '<p class="hint">Conferindo a senha…</p>'
+      const check = typeof obterAuth === 'function'
+        ? obterAuth().then(function (auth) {
+            const user = auth.currentUser
+            if (!user) throw new Error('Sessão expirada. Saia e entre de novo.')
+            return user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, pw))
+          })
+        : Promise.reject(new Error('Login indisponível no momento.'))
+      check.then(function () {
+        Repo.deleteContractor(c.id)
+        dlg.close(); dlg.remove()
+        toast('Contratado excluído.')
+        done()
+      }).catch(function (err) {
+        $('#pw-ok', dlg).disabled = false
+        const code = err && err.code
+        const msg = code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials'
+          ? 'Senha incorreta.'
+          : code === 'auth/too-many-requests' ? 'Muitas tentativas. Aguarde alguns minutos e tente de novo.'
+          : (err && err.message) || 'Não foi possível conferir a senha.'
+        showError($('#pw-msg', dlg), new Error(msg))
+        $('#pw-input', dlg).select()
+      })
+    })
+  }
+
   function viewContractors() {
     const list = Repo.contractors()
     if (!list.length) return go('#contratado/novo')
@@ -1589,8 +1643,15 @@
       list.map(function (c) {
         return '<tr><td><strong>' + esc(Repo.contractorName(c)) + '</strong></td><td>' + typeLabel(c) + '</td>' +
           '<td class="num">' + c.doctorIds.length + '</td><td class="num">' + Object.keys(c.byOperator).length + '</td>' +
-          '<td class="row-actions"><button class="btn small solid" data-use="' + c.id + '">Usar este</button></td></tr>'
+          '<td class="row-actions"><button class="btn small solid" data-use="' + c.id + '">Usar este</button>' +
+          '<button class="btn small danger" data-del-contractor="' + c.id + '">Excluir</button></td></tr>'
       }).join('') + '</tbody></table></div>'
+    $$('[data-del-contractor]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const c = Repo.contractor(Number(b.dataset.delContractor))
+        deleteContractorWithPassword(c, function () { render() })
+      })
+    })
     $$('[data-use]').forEach(function (b) {
       b.addEventListener('click', function () {
         Repo.setCurrent(Number(b.dataset.use))
@@ -1635,12 +1696,7 @@
     })
     if (id) {
       $('#del').addEventListener('click', function () {
-        if (!confirm('Excluir o contratado ' + Repo.contractorName(c) + '?')) return
-        try {
-          Repo.deleteContractor(id)
-          toast('Contratado excluído.')
-          go('#contratados')
-        } catch (err) { showError($('#msg'), err) }
+        deleteContractorWithPassword(c, function () { go('#contratados') })
       })
     }
   }
