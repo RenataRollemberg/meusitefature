@@ -32,7 +32,7 @@ const TERMOS_VERSAO = '1.0'
 const AVISO_NOVA_CONTA_URL = 'https://formsubmit.co/ajax/remasolfaturetiss@gmail.com'
 
 // Dias de teste grátis contados a partir da criação da conta.
-const DIAS_TESTE = 7
+const DIAS_TESTE = 30
 
 // E-mails que entram no painel da Remasol (admin.html), onde você define o plano e o
 // valor do serviço Faturista de cada cliente. Precisa ser igual à lista em firestore.rules.
