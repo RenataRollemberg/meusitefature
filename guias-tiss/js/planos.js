@@ -13,7 +13,7 @@ const Planos = (function () {
     { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510, link: 'https://mpago.la/2Vpnysw' }
   ]
 
-  const DIAS_GRATIS = 7
+  const DIAS_GRATIS = 30
 
   // Serviço extra: o valor é combinado com cada cliente e informado por você no
   // painel de administração. Ele pode incluir a plataforma ou ser somado ao plano.
