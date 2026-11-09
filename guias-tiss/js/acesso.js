@@ -131,6 +131,7 @@
       '<div>' + esc(user.email) + '</div>' +
       '<span class="conta-teste' + (cliente && cliente.status === 'ativo' ? ' ativo' : '') + '">' + esc(etiqueta) + '</span><br>' +
       (cliente && (plano || Planos.faturistaAtivo(cliente)) ? '<button type="button" data-ver>Minha assinatura</button> · ' : '') +
+      (!(cliente && cliente.status === 'ativo') ? '<button type="button" data-planos>Ver planos</button> · ' : '') +
       '<button type="button" data-sair>Sair</button>'
     faixa.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
     const ver = faixa.querySelector('[data-ver]')
@@ -142,6 +143,16 @@
             ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(pagar) + '">Pagar com Mercado Pago</a>'
             : '') +
           '<p>Para trocar de plano, fale com a Remasol: <a href="' + esc(linkWhats('Olá! Quero trocar o plano do Guias TISS.')) + '" target="_blank" rel="noopener">WhatsApp (21) 97666-3134</a>.</p>' +
+          '<button type="button" class="btn" data-fechar>Fechar</button>')
+      })
+    }
+    const verPlanos = faixa.querySelector('[data-planos]')
+    if (verPlanos) {
+      verPlanos.addEventListener('click', function () {
+        janela('<h2>Planos do Guias TISS</h2>' +
+          '<p>Escolha o plano para continuar depois do período grátis. Seus dados continuam guardados.</p>' +
+          planosHtml() +
+          '<p>Dúvidas ou serviço Faturista: <a href="' + esc(linkWhats('Olá! Tenho uma dúvida sobre os planos do Guias TISS.')) + '" target="_blank" rel="noopener">WhatsApp (21) 97666-3134</a>.</p>' +
           '<button type="button" class="btn" data-fechar>Fechar</button>')
       })
     }
