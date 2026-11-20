@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nova senha | Guias TISS</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/estilo.css">
+  <link rel="stylesheet" href="css/entrar.css?v=9">
+</head>
+<body class="pagina-entrar">
+  <main class="entrar">
+    <a class="entrar__marca" href="../index.html">
+      <img src="img/icone.svg" alt="" width="40" height="40">
+      <span>Guias TISS</span>
+    </a>
+
+    <section class="entrar__cartao" aria-live="polite">
+      <!-- Carregando -->
+      <div id="carregando">
+        <h1>Um momento…</h1>
+        <p class="entrar__sub">Conferindo o link.</p>
+      </div>
+
+      <!-- NOVA SENHA -->
+      <form id="form-senha" class="entrar__form" novalidate hidden>
+        <h1>Criar nova senha</h1>
+        <p class="entrar__sub">Conta: <strong id="conta-email"></strong></p>
+        <label for="s-nova">Nova senha <small>(mínimo 6 caracteres)</small></label>
+        <input id="s-nova" type="password" autocomplete="new-password" minlength="6" required>
+        <label for="s-repetir">Repita a nova senha</label>
+        <input id="s-repetir" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="entrar__aceite"><input id="s-mostrar" type="checkbox"> <span>Mostrar a senha</span></label>
+        <button class="btn solid entrar__largo" type="submit">Salvar nova senha</button>
+      </form>
+
+      <!-- Resultado (sucesso ou erro) -->
+      <div id="resultado" hidden>
+        <h1 id="r-titulo"></h1>
+        <p class="entrar__sub" id="r-texto"></p>
+        <a class="btn solid entrar__largo" id="r-botao" href="entrar.html">Ir para Entrar</a>
+      </div>
+
+      <p class="entrar__msg" id="msg" role="status"></p>
+      <p class="entrar__rodape">Suporte: <a href="mailto:remasolfaturetiss@gmail.com">remasolfaturetiss@gmail.com</a></p>
+    </section>
+
+    <a class="entrar__voltar" href="entrar.html">← Voltar para Entrar</a>
+  </main>
+
+  <script src="js/firebase-config.js?v=11"></script>
+  <script src="js/firebase-carregar.js?v=5"></script>
+  <script src="js/acao.js?v=1"></script>
+</body>
+</html>

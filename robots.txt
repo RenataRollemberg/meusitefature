@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /guias-tiss/admin.html
+Disallow: /guias-tiss/acao.html
 
 Sitemap: https://guiaxmltiss.com.br/sitemap.xml
