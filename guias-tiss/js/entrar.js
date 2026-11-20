@@ -119,7 +119,7 @@
       const email = $('#r-email').value.trim()
       ocupado(form, true)
       auth.sendPasswordResetEmail(email)
-        .then(function () { aviso('Se existir uma conta com ' + email + ', você vai receber o link em alguns minutos.', 'ok') })
+        .then(function () { aviso('Se existir uma conta com ' + email + ', você vai receber um e-mail do Guias TISS com o link para criar uma nova senha. Pode levar alguns minutos — veja também a caixa de Spam.', 'ok') })
         .catch(function (err) { aviso(mensagemErro(err), 'erro') })
         .finally(function () { ocupado(form, false) })
     })
