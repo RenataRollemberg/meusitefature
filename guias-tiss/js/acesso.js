@@ -90,12 +90,77 @@
       contaHtml(c)
   }
 
+  function pagamentoAutomatico() {
+    return typeof PAGAMENTOS_URL !== 'undefined' && !!PAGAMENTOS_URL
+  }
+
   function planosHtml() {
+    if (pagamentoAutomatico()) {
+      return '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
+        return '<div class="assinatura-plano">' +
+          '<strong>' + esc(p.nome) + '</strong><span>' + Planos.money(p.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(p)) + '</small>' +
+          '<button type="button" class="btn solid btn-pagar" data-pagar="' + esc(p.id) + '" data-forma="mensal">Pagar 30 dias</button>' +
+          '<button type="button" class="btn btn-pagar" data-pagar="' + esc(p.id) + '" data-forma="assinatura">Assinar no cartão</button>' +
+          '</div>'
+      }).join('') + '</div>' +
+        '<p class="assinatura-nota"><strong>Pagar 30 dias:</strong> Pix, boleto ou cartão; cada pagamento libera mais 30 dias. ' +
+        '<strong>Assinar no cartão:</strong> cobrança automática todo mês; cancele quando quiser no Mercado Pago. ' +
+        'Use no Mercado Pago o mesmo e-mail da sua conta do Guias TISS.</p>' +
+        '<p class="assinatura-erro" data-pagar-erro hidden></p>'
+    }
     return '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
       return '<a class="assinatura-plano" target="_blank" rel="noopener" href="' +
         esc(p.link || linkWhats('Olá! Quero assinar o Guias TISS no plano ' + p.nome + '.')) + '">' +
         '<strong>' + esc(p.nome) + '</strong><span>' + Planos.money(p.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(p)) + '</small></a>'
     }).join('') + '</div>'
+  }
+
+  // Botões "Pagar 30 dias" / "Assinar no cartão": pede o link ao Worker e abre o Mercado Pago.
+  document.addEventListener('click', function (e) {
+    const botao = e.target.closest && e.target.closest('[data-pagar]')
+    if (!botao) return
+    const caixa = botao.closest('.acesso-bloqueio__caixa') || document
+    const erro = caixa.querySelector('[data-pagar-erro]')
+    const botoes = caixa.querySelectorAll('[data-pagar]')
+    const textoOriginal = botao.textContent
+    botoes.forEach(function (b) { b.disabled = true })
+    botao.textContent = 'Abrindo o Mercado Pago…'
+    if (erro) erro.hidden = true
+    obterAuth().then(function (auth) {
+      if (!auth.currentUser) throw new Error('Entre na sua conta para pagar.')
+      return auth.currentUser.getIdToken()
+    }).then(function (idToken) {
+      return fetch(PAGAMENTOS_URL.replace(/\/$/, '') + '/pagar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: idToken, plano: botao.dataset.pagar, forma: botao.dataset.forma })
+      })
+    }).then(function (r) {
+      return r.json().catch(function () { return {} }).then(function (d) {
+        if (!r.ok || !d.url) throw new Error(d.erro || 'Não foi possível abrir o pagamento. Tente de novo.')
+        location.href = d.url
+      })
+    }).catch(function (err) {
+      botoes.forEach(function (b) { b.disabled = false })
+      botao.textContent = textoOriginal
+      if (erro) { erro.hidden = false; erro.textContent = (err && err.message) || 'Não foi possível abrir o pagamento.' }
+    })
+  })
+
+  // Pago até quando (pagamento automático). null = ativação manual, sem vencimento.
+  function pagoAte() {
+    return cliente ? paraData(cliente.pagoAte) : null
+  }
+
+  function vencido() {
+    const fim = pagoAte()
+    if (!fim || !cliente || cliente.status !== 'ativo') return false
+    const tolerancia = (typeof DIAS_TOLERANCIA === 'number' ? DIAS_TOLERANCIA : 3) * 86400000
+    return Date.now() > fim.getTime() + tolerancia
+  }
+
+  function dataCurta(d) {
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   function janela(html, fixa) {
@@ -122,7 +187,10 @@
     if (!sidebar) return
     const plano = cliente && Planos.get(cliente.plano)
     let etiqueta
-    if (cliente && cliente.status === 'ativo') etiqueta = plano ? plano.nome : 'Assinatura ativa'
+    if (cliente && cliente.status === 'ativo') {
+      etiqueta = plano ? plano.nome : 'Assinatura ativa'
+      if (pagoAte()) etiqueta += vencido() ? ' · venceu' : ' · até ' + dataCurta(pagoAte())
+    }
     else etiqueta = dias === 0 ? 'Teste encerrado' : dias === 1 ? 'Teste: último dia' : 'Teste: ' + dias + ' dias restantes'
 
     const faixa = document.createElement('div')
@@ -131,7 +199,7 @@
       '<div>' + esc(user.email) + '</div>' +
       '<span class="conta-teste' + (cliente && cliente.status === 'ativo' ? ' ativo' : '') + '">' + esc(etiqueta) + '</span><br>' +
       (cliente && (plano || Planos.faturistaAtivo(cliente)) ? '<button type="button" data-ver>Minha assinatura</button> · ' : '') +
-      (!(cliente && cliente.status === 'ativo') ? '<button type="button" data-planos>Ver planos</button> · ' : '') +
+      (!(cliente && cliente.status === 'ativo') || (pagamentoAutomatico() && pagoAte() && cliente.formaPagamento !== 'assinatura') ? '<button type="button" data-planos>' + (cliente && cliente.status === 'ativo' ? 'Renovar' : 'Ver planos') + '</button> · ' : '') +
       '<button type="button" data-sair>Sair</button>'
     faixa.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
     const ver = faixa.querySelector('[data-ver]')
@@ -165,18 +233,37 @@
 
   function bloquear(auth, motivo) {
     const suspenso = motivo === 'suspenso'
+    const titulo = suspenso ? 'Assinatura suspensa' : motivo === 'vencido' ? 'Sua assinatura venceu' : 'Seu teste grátis terminou'
     const tela = janela(
-      '<h2>' + (suspenso ? 'Assinatura suspensa' : 'Seu teste grátis terminou') + '</h2>' +
+      '<h2>' + titulo + '</h2>' +
       '<p>' + (suspenso
         ? 'Fale com a Remasol para reativar o acesso. Seus dados continuam guardados.'
         : 'Para continuar emitindo guias e gerando lotes XML, escolha um plano. Seus dados continuam guardados.') + '</p>' +
       (suspenso
         ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(linkWhats('Olá! Quero reativar o meu Guias TISS.')) + '">Falar com a Remasol</a>'
-        : (Planos.linkPagamento(cliente) && cliente && cliente.linkPagamento
+        : (!pagamentoAutomatico() && Planos.linkPagamento(cliente) && cliente && cliente.linkPagamento
           ? '<a class="btn solid" target="_blank" rel="noopener" href="' + esc(cliente.linkPagamento) + '">Pagar com Mercado Pago</a>'
           : planosHtml())) +
       '<p><button type="button" class="entrar__link" data-sair>Sair da conta</button></p>', true)
     tela.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
+    if (!suspenso) esperarPagamento()
+  }
+
+  // Volta do Mercado Pago com a tela bloqueada: confere o cadastro por 3 minutos e libera sozinho.
+  function esperarPagamento() {
+    if (!voltouDoPagamento || !pagamentoAutomatico()) return
+    let tentativas = 0
+    const timer = setInterval(function () {
+      tentativas++
+      obterDb().then(function (db) {
+        return obterAuth().then(function (auth) { return docCliente(db, auth.currentUser.email).get() })
+      }).then(function (snap) {
+        const d = snap && snap.exists ? snap.data() : null
+        const fim = d && paraData(d.pagoAte)
+        if (d && d.status === 'ativo' && fim && fim.getTime() > Date.now()) { clearInterval(timer); location.reload() }
+      }).catch(function () {})
+      if (tentativas >= 18) clearInterval(timer)
+    }, 10000)
   }
 
   // Caixa de aceite dos Termos de uso e da Política de privacidade.
@@ -300,6 +387,23 @@
     } catch (e) { /* idem */ }
   }
 
+  // Volta do Mercado Pago (?pagamento=ok|pendente|erro|assinatura): avisa e limpa o endereço.
+  const voltouDoPagamento = (new URLSearchParams(location.search).get('pagamento')) || ''
+  if (voltouDoPagamento) {
+    try { history.replaceState(null, '', location.pathname + location.hash) } catch (e) { /* ok */ }
+  }
+  function avisoPagamento() {
+    const textos = {
+      ok: ['Pagamento recebido!', 'Obrigada! A liberação acontece sozinha em instantes, assim que o Mercado Pago confirmar.'],
+      assinatura: ['Assinatura feita!', 'Obrigada! A primeira cobrança no cartão libera o acesso em instantes. Os próximos meses são cobrados automaticamente.'],
+      pendente: ['Pagamento em análise', 'Pix e boleto podem levar alguns minutos (boleto até 2 dias úteis). O acesso é liberado sozinho quando o pagamento for confirmado.'],
+      erro: ['Pagamento não concluído', 'O pagamento não foi aprovado. Você pode tentar de novo em "Ver planos".']
+    }
+    const t = textos[voltouDoPagamento]
+    if (!t || document.querySelector('.acesso-bloqueio')) return
+    janela('<h2>' + esc(t[0]) + '</h2><p>' + esc(t[1]) + '</p><button type="button" class="btn solid" data-fechar>Fechar</button>')
+  }
+
   // Rede de segurança: nunca deixa o app escondido por mais de 15 segundos.
   setTimeout(function () { raiz.classList.remove('acesso-carregando') }, 15000)
 
@@ -322,8 +426,10 @@
         const dias = diasRestantes(user)
         faixaConta(auth, user, dias)
         if (cliente && cliente.status === 'suspenso') return bloquear(auth, 'suspenso')
-        if (cliente && cliente.status === 'ativo') return
-        if (dias === 0) bloquear(auth, 'teste')
+        if (vencido()) return bloquear(auth, 'vencido')
+        if (cliente && cliente.status === 'ativo') return avisoPagamento()
+        if (dias === 0) return bloquear(auth, 'teste')
+        avisoPagamento()
       })
     })
   }).catch(function () {

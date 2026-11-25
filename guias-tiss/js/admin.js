@@ -176,7 +176,7 @@
               '<td>' + (fat ? Planos.money(c.faturista.valor) + '<br><span class="muted">' + (c.faturista.incluiPlataforma ? 'inclui plataforma' : 'somado ao plano') + '</span>' +
                 (Planos.limites(c) && Planos.limites(c).personalizado ? '<br><span class="muted">' + esc(Planos.limitesTexto(Planos.limites(c))) + '</span>' : '') : '<span class="muted">—</span>') + '</td>' +
               '<td class="num">' + Planos.money(Planos.cobranca(c).total) + '</td>' +
-              '<td>' + statusTag(c) + (c.status === 'teste' && c.testeAte ? '<br><span class="muted">até ' + esc(dataTexto(c.testeAte)) + '</span>' : '') + '</td>' +
+              '<td>' + statusTag(c) + (c.status === 'teste' && c.testeAte ? '<br><span class="muted">até ' + esc(dataTexto(c.testeAte)) + '</span>' : '') + (c.status === 'ativo' && c.pagoAte ? '<br><span class="muted">pago até ' + esc(dataTexto(c.pagoAte)) + (c.formaPagamento === 'assinatura' ? ' · cartão automático' : '') + '</span>' : '') + '</td>' +
               '<td class="nowrap">' + (c.criadoEm ? esc(dataTexto(c.criadoEm)) : '<span class="muted">—</span>') + '</td>' +
               '<td>' + (c.aceitoEm ? esc(dataTexto(c.aceitoEm)) : c.origem === 'site' ? '<span class="muted">criou sozinho</span>' : '<span class="muted">ainda não entrou</span>') + '</td>' +
               '<td><button class="btn small" data-editar="' + esc(c.id) + '">Editar</button></td></tr>'

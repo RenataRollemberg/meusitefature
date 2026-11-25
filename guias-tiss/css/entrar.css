@@ -100,6 +100,9 @@ html.acesso-carregando .layout { visibility: hidden; }
 .assinatura-plano:hover { border-color: var(--blue); background: var(--blue-soft); }
 .assinatura-plano span { font-family: var(--font-mono); color: var(--blue); }
 .assinatura-plano small { color: var(--muted); }
+div.assinatura-plano:hover { border-color: var(--line); background: none; }
+.assinatura-plano .btn-pagar { margin-top: 6px; width: 100%; justify-content: center; font-size: 0.85rem; padding: 6px 8px; }
+.assinatura-nota { font-size: 0.82rem; color: var(--muted); margin-top: 10px; }
 @media (max-width: 480px) { .assinatura-planos { grid-template-columns: 1fr; } }
 
 /* Celular e tablet: a faixa da conta fica compacta na barra de cima */

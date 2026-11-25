@@ -1,0 +1,11 @@
+name = "guias-tiss-pagamentos"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+[vars]
+FIREBASE_PROJECT_ID = "guia-tiss"
+FIREBASE_API_KEY = "AIzaSyBb_dL0ypyVm8ZgakRoZwUmeg_vcII2a_w"
+SITE_URL = "https://guiaxmltiss.com.br"
+
+# Segredos (não ficam aqui — configure no painel da Cloudflare ou com `wrangler secret put`):
+# MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
