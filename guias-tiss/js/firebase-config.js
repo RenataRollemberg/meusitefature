@@ -31,6 +31,14 @@ const TERMOS_VERSAO = '1.0'
 // os dados da conta ficam no painel (admin.html). Vazio = sem e-mail.
 const AVISO_NOVA_CONTA_URL = 'https://formsubmit.co/ajax/remasolfaturetiss@gmail.com'
 
+// Endereço do Worker de pagamentos na Cloudflare (pasta pagamentos-worker). Com ele preenchido,
+// o cliente paga dentro do programa e é ativado sozinho quando o Mercado Pago confirma.
+// Vazio = os botões dos planos abrem os links fixos do Mercado Pago (ativação manual no painel).
+const PAGAMENTOS_URL = ''
+
+// Dias de tolerância depois do vencimento antes de bloquear (atraso de Pix/boleto, cobrança do cartão).
+const DIAS_TOLERANCIA = 3
+
 // Dias de teste grátis contados a partir da criação da conta.
 const DIAS_TESTE = 30
 
