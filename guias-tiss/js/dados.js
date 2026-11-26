@@ -452,7 +452,11 @@ const Repo = {
     if (id) {
       saved = Object.assign(Repo.doctor(id), input)
     } else {
-      if (window.Assinatura) window.Assinatura.checarNovoMedico(Db.state.doctors.length)
+      if (window.Assinatura) {
+        const destino = contractorId ? Repo.contractor(contractorId) : null
+        const mesmoCnpj = !!(destino && destino.type === 'cnpj' && Db.state.doctors.every(function (d) { return destino.doctorIds.indexOf(d.id) >= 0 }))
+        window.Assinatura.checarNovoMedico(Db.state.doctors.length, mesmoCnpj)
+      }
       saved = Object.assign({ id: Db.nextId('doctor') }, input)
       Db.state.doctors.push(saved)
       if (contractorId) Repo.addDoctorTo(contractorId, saved.id, true)

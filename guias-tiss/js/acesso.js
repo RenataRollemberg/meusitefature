@@ -32,11 +32,18 @@
         '. Para cadastrar mais, fale com a Remasol.')
     },
     // Chamado antes de cadastrar um médico novo.
-    checarNovoMedico: function (quantidadeAtual) {
+    // mesmoCnpj: o médico novo vai para um contratado por CNPJ onde já estão todos os médicos da conta.
+    checarNovoMedico: function (quantidadeAtual, mesmoCnpj) {
       const l = window.Assinatura.limites()
-      if (!l || l.medicos === null || quantidadeAtual < l.medicos) return
-      throw new Error(quemPermite(l) + ' permite ' + l.medicos + (l.medicos === 1 ? ' médico' : ' médicos') +
-        '. Para cadastrar mais, fale com a Remasol.')
+      if (!l || l.medicos === null) return
+      const limite = mesmoCnpj && l.medicosCnpj ? Math.max(l.medicos, l.medicosCnpj) : l.medicos
+      if (quantidadeAtual < limite) return
+      if (l.medicosCnpj && !mesmoCnpj && quantidadeAtual < l.medicosCnpj) {
+        throw new Error(quemPermite(l) + ' permite ' + l.medicos + (l.medicos === 1 ? ' médico' : ' médicos') +
+          ', ou até ' + l.medicosCnpj + ' médicos se todos estiverem no mesmo CNPJ. Cadastre o médico dentro do contratado por CNPJ.')
+      }
+      throw new Error(quemPermite(l) + ' permite ' + limite + (limite === 1 ? ' médico' : ' médicos') +
+        (limite !== l.medicos ? ' no mesmo CNPJ' : '') + '. Para cadastrar mais, troque de plano.')
     }
   }
 
