@@ -491,7 +491,23 @@
       '<span class="hint">Total do item</span><strong data-item-total>' + Fmt.money(total) + '</strong></div>' +
       '<div class="c12" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px"><button type="button" class="btn small" data-save-item-value="' + i + '">Salvar valor no convênio</button>' +
       '<span class="hint" data-price-hint></span></div>' +
+      (isHonItem ? '' :
+        '<div class="c12 repetir">' +
+        '<span><strong>Sessões repetidas?</strong> Total de</span>' +
+        '<input inputmode="numeric" data-repeat-n="' + i + '" value="" placeholder="ex.: 4" aria-label="Total de sessões">' +
+        '<span>sessões, a cada</span>' +
+        '<input inputmode="numeric" data-repeat-days="' + i + '" value="7" aria-label="Intervalo em dias">' +
+        '<span>dias</span>' +
+        '<button type="button" class="btn small" data-repeat-item="' + i + '">Gerar sessões</button>' +
+        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item.</span></div>') +
       '</div></div>'
+  }
+
+  // Data de "aaaa-mm-dd" somando dias (sem problema de fuso horário).
+  function somarDias(iso, dias) {
+    const p = String(iso).split('-').map(Number)
+    const d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + dias))
+    return d.toISOString().slice(0, 10)
   }
 
   function readItems() {
@@ -1100,6 +1116,26 @@
           if (items.length === 1) return toast('A guia precisa de ao menos um procedimento.', true)
           items.splice(Number(rm.dataset.removeItem), 1)
           redrawItems(items)
+          return
+        }
+        const rep = e.target.closest('[data-repeat-item]')
+        if (rep) {
+          const idx = Number(rep.dataset.repeatItem)
+          const total = Math.round(Number(($('[data-repeat-n="' + idx + '"]').value || '').replace(/\D/g, '')) || 0)
+          const passo = Math.round(Number(($('[data-repeat-days="' + idx + '"]').value || '').replace(/\D/g, '')) || 0)
+          if (total < 2 || total > 60) return toast('Informe o total de sessões (de 2 a 60).', true)
+          if (passo < 1 || passo > 90) return toast('Informe de quantos em quantos dias (de 1 a 90).', true)
+          const items = readItems()
+          const base = items[idx]
+          const inicio = base.date || ($('#g-date') && $('#g-date').value)
+          if (!inicio) return toast('Informe a data de execução deste item (ou a data do atendimento).', true)
+          if (!base.code) return toast('Escolha o procedimento antes de gerar as sessões.', true)
+          base.date = inicio
+          const novas = []
+          for (let k = 1; k < total; k++) novas.push(Object.assign({}, base, { date: somarDias(inicio, passo * k) }))
+          items.splice.apply(items, [idx + 1, 0].concat(novas))
+          redrawItems(items)
+          toast(total + ' sessões na guia: de ' + Fmt.date(inicio) + ' a ' + Fmt.date(novas[novas.length - 1].date) + '.')
           return
         }
         const sv = e.target.closest('[data-save-item-value]')
