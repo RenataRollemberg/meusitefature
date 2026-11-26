@@ -4,11 +4,13 @@
 'use strict'
 
 const Planos = (function () {
+  // medicosCnpj: quantos médicos o plano aceita quando todos estão no mesmo contratado por CNPJ
+  // (sem o campo, vale só "medicos").
   // link: endereço do plano de assinatura criado no Mercado Pago (ex.: https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=...).
   // Vazio = o botão leva para o WhatsApp da Remasol.
   const lista = [
     { id: 'basico', nome: 'Básico', medicos: 1, convenios: 1, mensal: 70, link: 'https://mpago.la/2FKd7JF' },
-    { id: 'basico2', nome: 'Básico 2', medicos: 1, convenios: 3, mensal: 130, link: 'https://mpago.la/2sxTZ5v' },
+    { id: 'basico2', nome: 'Básico 2', medicos: 1, medicosCnpj: 4, convenios: 3, mensal: 130, link: 'https://mpago.la/2sxTZ5v' },
     { id: 'clinica', nome: 'Clínica', medicos: 5, convenios: 10, mensal: 280, link: 'https://mpago.la/1s7KjV4' },
     { id: 'premium', nome: 'Clínica Premium', medicos: 10, convenios: 15, mensal: 510, link: 'https://mpago.la/2Vpnysw' }
   ]
@@ -49,7 +51,8 @@ const Planos = (function () {
 
   // Aceita um plano ou o resultado de limites(). null = sem limite.
   function limitesTexto(l) {
-    return (l.medicos == null ? 'médicos sem limite' : plural(l.medicos, 'médico', 'médicos')) + ' · ' +
+    const cnpj = l.medicosCnpj ? ' (ou até ' + l.medicosCnpj + ' no mesmo CNPJ)' : ''
+    return (l.medicos == null ? 'médicos sem limite' : plural(l.medicos, 'médico', 'médicos') + cnpj) + ' · ' +
       (l.convenios == null ? 'convênios sem limite' : plural(l.convenios, 'convênio', 'convênios'))
   }
 
@@ -69,6 +72,8 @@ const Planos = (function () {
     if (medicos === null && convenios === null) return null
     return {
       medicos: medicos,
+      // Médicos a mais quando todos ficam no mesmo CNPJ (só vale o do plano, não a liberação do Faturista).
+      medicosCnpj: medicosFat === null && plano && plano.medicosCnpj ? plano.medicosCnpj : null,
       convenios: convenios,
       plano: plano,
       personalizado: medicosFat !== null || conveniosFat !== null
