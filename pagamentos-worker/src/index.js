@@ -82,7 +82,7 @@ async function pagar(request, env, cors) {
         unit_price: plano.mensal
       }],
       payer: { email },
-      external_reference: referencia,
+      external_reference: codRef(referencia),
       notification_url: webhookUrl,
       back_urls: { success: voltar + 'ok', pending: voltar + 'pendente', failure: voltar + 'erro' },
       auto_return: 'approved',
@@ -91,8 +91,8 @@ async function pagar(request, env, cors) {
     link = pref.init_point
   } else {
     const assin = await mp(env, 'POST', '/preapproval', {
-      reason: 'Guias TISS — plano ' + plano.nome,
-      external_reference: referencia,
+      reason: 'Guias TISS plano ' + semAcento(plano.nome),
+      external_reference: codRef(referencia),
       payer_email: email,
       auto_recurring: {
         frequency: 1,
@@ -180,7 +180,7 @@ async function webhook(request, env, url) {
   return new Response('ok', { status: 200 })
 }
 
-function lerReferencia(ref) {
+function lerReferencia(ref) { ref = decRef(ref)
   const partes = String(ref || '').split('|')
   if (partes.length < 2 || !partes[0].includes('@') || !PLANOS[partes[1]]) return null
   return { email: partes[0].toLowerCase(), plano: partes[1], forma: partes[2] || 'mensal' }
@@ -228,7 +228,7 @@ async function assinaturaValida(request, segredo, dataId) {
   return iguais(hex, partes.v1)
 }
 
-function iguais(a, b) {
+function codRef(s) { return 'r' + b64url(s) } function decRef(s) { s = String(s || ''); if (s[0] !== 'r' || s.indexOf('|') >= 0) return s; try { s = s.slice(1).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))) } catch (e) { return '' } } function semAcento(s) { return String(s).normalize('NFD').replace(/[^\x20-\x7E]/g, '') } function iguais(a, b) {
   if (a.length !== b.length) return false
   let r = 0
   for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
