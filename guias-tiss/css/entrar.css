@@ -94,7 +94,7 @@ html.acesso-carregando .layout { visibility: hidden; }
 .assinatura-conta td:last-child { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
 .assinatura-conta tfoot td { border-bottom: 0; font-weight: 700; padding-top: 10px; }
 .assinatura-ok { color: var(--teal) !important; font-weight: 600; }
-.assinatura-erro { color: var(--red) !important; }
+.assinatura-erro { color: var(--red) !important; font-weight: 600; background: #fdecec; border-radius: 8px; padding: 8px 10px; }
 .assinatura-planos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .assinatura-plano { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); }
 .assinatura-plano:hover { border-color: var(--blue); background: var(--blue-soft); }

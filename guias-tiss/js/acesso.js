@@ -150,7 +150,7 @@
     }).catch(function (err) {
       botoes.forEach(function (b) { b.disabled = false })
       botao.textContent = textoOriginal
-      if (erro) { erro.hidden = false; erro.textContent = (err && err.message) || 'Não foi possível abrir o pagamento.' }
+      if (erro) { erro.hidden = false; erro.textContent = (err && err.message) || 'Não foi possível abrir o pagamento.'; erro.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
     })
   })
 
