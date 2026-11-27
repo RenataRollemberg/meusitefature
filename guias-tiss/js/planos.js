@@ -41,6 +41,25 @@ const Planos = (function () {
     return lista.find(function (p) { return p.id === id }) || null
   }
 
+  // Plano personalizado: a Remasol define no painel o valor e os limites de um cliente
+  // (campos personalizadoValor, personalizadoMedicos, personalizadoConvenios). Vazio = sem limite.
+  function personalizado(cliente) {
+    if (!cliente || cliente.plano !== 'personalizado' || !(Number(cliente.personalizadoValor) > 0)) return null
+    const n = function (v) { return Number(v) > 0 ? Number(v) : null }
+    return {
+      id: 'personalizado',
+      nome: 'Personalizado',
+      mensal: Number(cliente.personalizadoValor),
+      medicos: n(cliente.personalizadoMedicos),
+      convenios: n(cliente.personalizadoConvenios)
+    }
+  }
+
+  // O plano do cliente: um dos planos da lista ou o personalizado.
+  function doCliente(cliente) {
+    return personalizado(cliente) || get(cliente && cliente.plano)
+  }
+
   function money(value) {
     return 'R$ ' + Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
@@ -63,7 +82,7 @@ const Planos = (function () {
   // Limites que valem para o cliente. No Faturista, a Remasol pode liberar as quantidades no painel;
   // o que ela deixar vazio segue o plano. Sem plano e sem quantidade = sem limite (null).
   function limites(cliente) {
-    const plano = get(cliente && cliente.plano)
+    const plano = doCliente(cliente)
     const fat = faturistaAtivo(cliente) ? cliente.faturista : null
     const medicosFat = fat && Number(fat.medicos) > 0 ? Number(fat.medicos) : null
     const conveniosFat = fat && Number(fat.convenios) > 0 ? Number(fat.convenios) : null
@@ -76,19 +95,19 @@ const Planos = (function () {
       medicosCnpj: medicosFat === null && plano && plano.medicosCnpj ? plano.medicosCnpj : null,
       convenios: convenios,
       plano: plano,
-      personalizado: medicosFat !== null || conveniosFat !== null
+      personalizado: medicosFat !== null || conveniosFat !== null || !!(plano && plano.id === 'personalizado')
     }
   }
 
   // Quanto o cliente paga por mês, com as partes da conta para mostrar na tela.
   function cobranca(cliente) {
-    const plano = get(cliente && cliente.plano)
+    const plano = doCliente(cliente)
     const linhas = []
     let total = 0
     const fat = faturistaAtivo(cliente) ? cliente.faturista : null
     const incluiPlataforma = !!(fat && fat.incluiPlataforma)
     if (plano && !incluiPlataforma) {
-      linhas.push({ texto: 'Plano ' + plano.nome, valor: plano.mensal })
+      linhas.push({ texto: plano.id === 'personalizado' ? 'Plano personalizado' : 'Plano ' + plano.nome, valor: plano.mensal })
       total += plano.mensal
     }
     if (fat) {
@@ -115,6 +134,8 @@ const Planos = (function () {
     STATUS: STATUS,
     LINKS_FATURISTA: LINKS_FATURISTA,
     get: get,
+    personalizado: personalizado,
+    doCliente: doCliente,
     money: money,
     limitesTexto: limitesTexto,
     limites: limites,

@@ -169,10 +169,10 @@
       '<div class="table-wrap">' + (lista.length
         ? '<table class="list"><thead><tr><th>Cliente</th><th>Plano</th><th>Faturista</th><th class="num">Total/mês</th><th>Situação</th><th>Criada em</th><th>Confirmou</th><th></th></tr></thead><tbody>' +
           lista.map(function (c) {
-            const plano = Planos.get(c.plano)
+            const plano = Planos.doCliente(c)
             const fat = Planos.faturistaAtivo(c)
             return '<tr><td><strong>' + esc(c.nome || '—') + '</strong>' + (contaNova(c) ? ' <span class="tag amber">Nova</span>' : '') + '<br><span class="mono muted">' + esc(c.id) + '</span></td>' +
-              '<td>' + (plano ? esc(plano.nome) : '<span class="muted">—</span>') + '</td>' +
+              '<td>' + (plano ? esc(plano.nome) + (plano.id === 'personalizado' ? '<br><span class="muted">' + esc(Planos.limitesTexto(plano)) + '</span>' : '') : '<span class="muted">—</span>') + '</td>' +
               '<td>' + (fat ? Planos.money(c.faturista.valor) + '<br><span class="muted">' + (c.faturista.incluiPlataforma ? 'inclui plataforma' : 'somado ao plano') + '</span>' +
                 (Planos.limites(c) && Planos.limites(c).personalizado ? '<br><span class="muted">' + esc(Planos.limitesTexto(Planos.limites(c))) + '</span>' : '') : '<span class="muted">—</span>') + '</td>' +
               '<td class="num">' + Planos.money(Planos.cobranca(c).total) + '</td>' +
@@ -228,10 +228,16 @@
       '<label class="field c6">Plano<select id="plano"><option value="">— sem plano —</option>' +
       Planos.lista.map(function (p) {
         return '<option value="' + p.id + '"' + (c.plano === p.id ? ' selected' : '') + '>' + esc(p.nome + ' — ' + Planos.money(p.mensal) + ' — ' + Planos.limitesTexto(p)) + '</option>'
-      }).join('') + '</select><span class="hint">Define os limites de médicos e convênios.</span></label>' +
+      }).join('') + '<option value="personalizado"' + (c.plano === 'personalizado' ? ' selected' : '') + '>Personalizado — valor e limites combinados com o cliente</option>' +
+      '</select><span class="hint">Define os limites de médicos e convênios.</span></label>' +
       '<label class="field c3">Situação<select id="status">' + Planos.STATUS.map(function (s) {
         return '<option value="' + s.value + '"' + ((c.status || 'teste') === s.value ? ' selected' : '') + '>' + esc(s.label) + '</option>'
       }).join('') + '</select></label>' +
+      '<div class="grid c12" id="pers-campos" style="margin:0">' +
+      '<label class="field c4">Valor por mês (R$) <span class="req">*</span><input id="pers-valor" class="code" inputmode="decimal" placeholder="400,00" value="' + esc(dinheiroCampo(c.personalizadoValor)) + '"></label>' +
+      '<label class="field c4">Médicos<input id="pers-medicos" class="code" type="number" min="1" step="1" inputmode="numeric" value="' + esc(c.personalizadoMedicos) + '"><span class="hint">Vazio = sem limite</span></label>' +
+      '<label class="field c4">Convênios<input id="pers-convenios" class="code" type="number" min="1" step="1" inputmode="numeric" value="' + esc(c.personalizadoConvenios) + '"><span class="hint">Vazio = sem limite</span></label>' +
+      '</div>' +
       '<label class="field c3" id="teste-wrap">Período grátis até<input id="testeAte" type="date" value="' + esc(dataCampo(c.testeAte)) + '"><span class="hint">Vazio = ' + DIAS_TESTE + ' dias da criação da conta</span></label>' +
       '</div>' +
       '<div class="form-section">Serviço ' + esc(Planos.FATURISTA.nome) + '</div>' +
@@ -273,6 +279,11 @@
         testeAte: $('#testeAte').value,
         observacao: $('#obs').value.trim(),
         linkPagamento: $('#link').value.trim(),
+        personalizado: {
+          valor: parseDinheiro($('#pers-valor').value),
+          medicos: quantidade($('#pers-medicos').value),
+          convenios: quantidade($('#pers-convenios').value)
+        },
         faturista: {
           ativo: $('#fat-ativo').checked,
           valor: parseDinheiro(valorTexto),
@@ -290,9 +301,10 @@
       if (pronto && !$('#link').value.trim()) $('#link').value = pronto.link
       $('#fat-campos').hidden = !d.faturista.ativo
       $('#teste-wrap').hidden = d.status !== 'teste'
-      const previa = { plano: d.plano, faturista: Object.assign({}, d.faturista, { valor: Number.isNaN(d.faturista.valor) ? 0 : d.faturista.valor }) }
+      $('#pers-campos').hidden = d.plano !== 'personalizado'
+      const previa = { plano: d.plano, personalizadoValor: Number.isNaN(d.personalizado.valor) ? 0 : d.personalizado.valor, personalizadoMedicos: d.personalizado.medicos, personalizadoConvenios: d.personalizado.convenios, faturista: Object.assign({}, d.faturista, { valor: Number.isNaN(d.faturista.valor) ? 0 : d.faturista.valor }) }
       const conta = Planos.cobranca(previa)
-      const planoEscolhido = Planos.get(d.plano)
+      const planoEscolhido = Planos.doCliente(previa)
       const vazio = function (campo, nome) {
         return 'Vazio = ' + (planoEscolhido ? planoEscolhido[campo] + ' (do plano)' : nome + ' sem limite')
       }
@@ -322,6 +334,8 @@
       if (d.faturista.ativo && !d.faturista.incluiPlataforma && !d.plano) return (msg.innerHTML = erroHtml({ message: 'Para somar o Faturista ao plano, escolha um plano.' }))
       if (d.faturista.ativo && (Number.isNaN(d.faturista.medicos) || Number.isNaN(d.faturista.convenios))) return (msg.innerHTML = erroHtml({ message: 'Médicos e convênios liberados precisam ser números inteiros a partir de 1. Deixe vazio para seguir o plano.' }))
       if (d.linkPagamento && !/^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com\.br|mpago\.la|mpago\.li)\//i.test(d.linkPagamento)) return (msg.innerHTML = erroHtml({ message: 'O link de pagamento precisa ser do Mercado Pago (mercadopago.com.br ou mpago.la).' }))
+      if (d.plano === 'personalizado' && (Number.isNaN(d.personalizado.valor) || !(d.personalizado.valor > 0))) return (msg.innerHTML = erroHtml({ message: 'Informe o valor por mês do plano personalizado.' }))
+      if (d.plano === 'personalizado' && (Number.isNaN(d.personalizado.medicos) || Number.isNaN(d.personalizado.convenios))) return (msg.innerHTML = erroHtml({ message: 'Médicos e convênios do plano personalizado precisam ser números inteiros a partir de 1, ou vazios (sem limite).' }))
       if (!d.plano && !d.faturista.ativo) return (msg.innerHTML = erroHtml({ message: 'Escolha um plano ou marque o serviço Faturista.' }))
 
       const dados = {
@@ -332,6 +346,9 @@
         testeAte: d.status === 'teste' && d.testeAte ? firebase.firestore.Timestamp.fromDate(new Date(d.testeAte + 'T23:59:59')) : null,
         observacao: d.observacao,
         linkPagamento: d.linkPagamento,
+        personalizadoValor: d.plano === 'personalizado' ? Math.round(d.personalizado.valor * 100) / 100 : null,
+        personalizadoMedicos: d.plano === 'personalizado' ? d.personalizado.medicos : null,
+        personalizadoConvenios: d.plano === 'personalizado' ? d.personalizado.convenios : null,
         faturista: d.faturista.ativo
           ? { ativo: true, valor: Math.round(d.faturista.valor * 100) / 100, incluiPlataforma: d.faturista.incluiPlataforma, medicos: d.faturista.medicos, convenios: d.faturista.convenios }
           : { ativo: false },

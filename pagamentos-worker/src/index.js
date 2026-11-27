@@ -60,7 +60,8 @@ export default {
 
 async function pagar(request, env, cors) {
   const corpo = await request.json().catch(() => ({}))
-  const plano = PLANOS[corpo.plano]
+  let plano = PLANOS[corpo.plano]
+  if (!plano && corpo.plano === 'personalizado') plano = await planoPersonalizado(corpo.idToken, env)
   if (!plano) throw erroPublico('Plano inválido.', 400)
   const forma = corpo.forma === 'assinatura' ? 'assinatura' : 'mensal'
 
@@ -182,7 +183,7 @@ async function webhook(request, env, url) {
 
 function lerReferencia(ref) { ref = decRef(ref)
   const partes = String(ref || '').split('|')
-  if (partes.length < 2 || !partes[0].includes('@') || !PLANOS[partes[1]]) return null
+  if (partes.length < 2 || !partes[0].includes('@') || !(PLANOS[partes[1]] || partes[1] === 'personalizado')) return null
   return { email: partes[0].toLowerCase(), plano: partes[1], forma: partes[2] || 'mensal' }
 }
 
@@ -228,7 +229,7 @@ async function assinaturaValida(request, segredo, dataId) {
   return iguais(hex, partes.v1)
 }
 
-function codRef(s) { return 'r' + b64url(s) } function decRef(s) { s = String(s || ''); if (s[0] !== 'r' || s.indexOf('|') >= 0) return s; try { s = s.slice(1).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))) } catch (e) { return '' } } function semAcento(s) { return String(s).normalize('NFD').replace(/[^\x20-\x7E]/g, '') } function iguais(a, b) {
+async function planoPersonalizado(idToken, env) { const u = await usuarioDoToken(idToken, env); const c = await lerCliente(env, u.email); if (c && c.plano === 'personalizado' && Number(c.personalizadoValor) > 0) return { nome: 'Personalizado', mensal: Math.round(Number(c.personalizadoValor) * 100) / 100 }; return null } function codRef(s) { return 'r' + b64url(s) } function decRef(s) { s = String(s || ''); if (s[0] !== 'r' || s.indexOf('|') >= 0) return s; try { s = s.slice(1).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))) } catch (e) { return '' } } function semAcento(s) { return String(s).normalize('NFD').replace(/[^\x20-\x7E]/g, '') } function iguais(a, b) {
   if (a.length !== b.length) return false
   let r = 0
   for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
