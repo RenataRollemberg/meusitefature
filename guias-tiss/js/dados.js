@@ -786,6 +786,7 @@ const Repo = {
     const contractor = Repo.contractor(data.contractorId)
     if (!contractor) throw new Error('Escolha o contratado.')
     if (contractor.doctorIds.indexOf(data.doctorId) < 0) throw new Error('Escolha o médico executante.')
+    if (window.Assinatura && window.Assinatura.checarGuia) window.Assinatura.checarGuia(data.doctorId, data.operatorId)
     data.cardNumber = data.cardNumber.trim()
     if (data.guideType === 'sadt') {
       // A SP/SADT pode ter só outras despesas (ex.: materiais do especialista numa internação).
