@@ -34,7 +34,7 @@ const AVISO_NOVA_CONTA_URL = 'https://formsubmit.co/ajax/remasolfaturetiss@gmail
 // Endereço do Worker de pagamentos na Cloudflare (pasta pagamentos-worker). Com ele preenchido,
 // o cliente paga dentro do programa e é ativado sozinho quando o Mercado Pago confirma.
 // Vazio = os botões dos planos abrem os links fixos do Mercado Pago (ativação manual no painel).
-const PAGAMENTOS_URL = ''
+const PAGAMENTOS_URL = 'https://guias-tiss-pagamentos.rlmdesenvolvimentodesistemas.workers.dev'
 
 // Dias de tolerância depois do vencimento antes de bloquear (atraso de Pix/boleto, cobrança do cartão).
 const DIAS_TOLERANCIA = 3
