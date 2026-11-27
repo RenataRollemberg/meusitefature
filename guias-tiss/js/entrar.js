@@ -45,6 +45,9 @@
 
   obterAuth().then(function (auth) {
     // Já está logado: vai direto para o app.
+    if (/[?&]senha=1/.test(location.search)) {
+      aviso('Senha alterada! Agora entre com o seu e-mail e a nova senha.', 'ok')
+    }
     if (/[?&]confirmado=1/.test(location.search)) {
       aviso('E-mail confirmado! Agora entre com o seu e-mail e a sua senha.', 'ok')
     }
@@ -118,7 +121,7 @@
       const form = e.target
       const email = $('#r-email').value.trim()
       ocupado(form, true)
-      auth.sendPasswordResetEmail(email)
+      auth.sendPasswordResetEmail(email, { url: location.origin + location.pathname + '?senha=1' })
         .then(function () { aviso('Se existir uma conta com ' + email + ', você vai receber um e-mail do Guias TISS com o link para criar uma nova senha. Pode levar alguns minutos — veja também a caixa de Spam.', 'ok') })
         .catch(function (err) { aviso(mensagemErro(err), 'erro') })
         .finally(function () { ocupado(form, false) })
