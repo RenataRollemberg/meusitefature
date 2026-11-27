@@ -25,8 +25,16 @@ const PLANOS = {
 const DIAS_POR_PAGAMENTO = 30
 const MP = 'https://api.mercadopago.com'
 
+// Valores públicos (não são segredo) — usados se não forem configurados no painel.
+const PADRAO = {
+  FIREBASE_PROJECT_ID: 'guia-tiss',
+  FIREBASE_API_KEY: 'AIzaSyBb_dL0ypyVm8ZgakRoZwUmeg_vcII2a_w',
+  SITE_URL: 'https://guiaxmltiss.com.br'
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, envOriginal) {
+    const env = Object.assign({}, PADRAO, envOriginal)
     const url = new URL(request.url)
     const cors = corsHeaders(request, env)
 
@@ -249,7 +257,7 @@ async function mp(env, metodo, caminho, corpo) {
     e.status = 502
     if (caminho === '/preapproval' && r.status < 500) {
       e.publico = true
-      e.message = 'O Mercado Pago recusou a assinatura no cartão (' + msg + '). Tente "Pagar este mês" ou fale com o suporte.'
+      e.message = 'O Mercado Pago recusou a assinatura no cartão (' + msg + '). Tente "Pagar 30 dias" ou fale com o suporte.'
     }
     throw e
   }
