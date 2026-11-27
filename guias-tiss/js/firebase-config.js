@@ -45,3 +45,7 @@ const DIAS_TESTE = 30
 // E-mails que entram no painel da Remasol (admin.html), onde você define o plano e o
 // valor do serviço Faturista de cada cliente. Precisa ser igual à lista em firestore.rules.
 const ADMIN_EMAILS = ['remasolfaturetiss@gmail.com']
+
+// Logins em que as sessões repetidas (SP/SADT) também pulam feriados nacionais,
+// do estado do RJ e do município do Rio de Janeiro (além dos domingos).
+const FERIADOS_RJ_EMAILS = ['colunnagymx@gmail.com']
