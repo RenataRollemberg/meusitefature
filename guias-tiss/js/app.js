@@ -524,7 +524,7 @@
         '<input inputmode="numeric" data-repeat-days="' + i + '" value="7" aria-label="Intervalo em dias">' +
         '<span>dias</span>' +
         '<button type="button" class="btn small" data-repeat-item="' + i + '">Gerar sessões</button>' +
-        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item.</span></div>') +
+        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item. Domingo passa para segunda e a contagem continua dali.</span></div>') +
       '</div></div>'
   }
 
@@ -1176,12 +1176,18 @@
           const inicio = base.date || ($('#g-date') && $('#g-date').value)
           if (!inicio) return toast('Informe a data de execução deste item (ou a data do atendimento).', true)
           if (!base.code) return toast('Escolha o procedimento antes de gerar as sessões.', true)
-          base.date = inicio
+          // Nunca no domingo: passa para segunda e a contagem segue a partir da nova data.
+          const semDomingo = function (iso) { return new Date(iso + 'T12:00:00Z').getUTCDay() === 0 ? somarDias(iso, 1) : iso }
+          base.date = semDomingo(inicio)
           const novas = []
-          for (let k = 1; k < total; k++) novas.push(Object.assign({}, base, { date: somarDias(inicio, passo * k) }))
+          let data = base.date
+          for (let k = 1; k < total; k++) {
+            data = semDomingo(somarDias(data, passo))
+            novas.push(Object.assign({}, base, { date: data }))
+          }
           items.splice.apply(items, [idx + 1, 0].concat(novas))
           redrawItems(items)
-          toast(total + ' sessões na guia: de ' + Fmt.date(inicio) + ' a ' + Fmt.date(novas[novas.length - 1].date) + '.')
+          toast(total + ' sessões na guia: de ' + Fmt.date(base.date) + ' a ' + Fmt.date(novas[novas.length - 1].date) + '.')
           return
         }
         const sv = e.target.closest('[data-save-item-value]')
