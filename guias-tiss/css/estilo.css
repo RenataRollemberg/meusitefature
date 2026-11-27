@@ -308,3 +308,5 @@ pre.xml {
 .repetir { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 4px; border: 1px dashed var(--line); border-radius: 8px; background: var(--paper, transparent); }
 .repetir input { width: 70px; text-align: center; }
 .repetir .hint { flex-basis: 100%; }
+
+.solicitante-busca { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; }

@@ -365,6 +365,31 @@
 
   const CONSULTATION_CODE = '10101012'
 
+  // Solicitantes de fora (médicos que pedem o exame/terapia): não são cadastrados nem contam no plano.
+  // Ficam só neste navegador, para o nome aparecer de novo na próxima guia.
+  const Solicitantes = {
+    chave: 'guias-tiss:solicitantes',
+    lista: function () {
+      try { return JSON.parse(localStorage.getItem(this.chave) || '[]') || [] } catch (e) { return [] }
+    },
+    lembrar: function (r) {
+      if (!r || !r.professionalName || !r.councilNumber) return
+      const id = [r.councilCode, r.councilNumber, r.councilUf].join('|')
+      const nova = this.lista().filter(function (x) { return [x.councilCode, x.councilNumber, x.councilUf].join('|') !== id })
+      nova.unshift(Object.assign({}, r, { sameAsExecutor: false }))
+      try { localStorage.setItem(this.chave, JSON.stringify(nova.slice(0, 500))) } catch (e) { /* navegador cheio ou bloqueado */ }
+    },
+    esquecer: function (r) {
+      const id = [r.councilCode, r.councilNumber, r.councilUf].join('|')
+      const nova = this.lista().filter(function (x) { return [x.councilCode, x.councilNumber, x.councilUf].join('|') !== id })
+      try { localStorage.setItem(this.chave, JSON.stringify(nova)) } catch (e) { /* ok */ }
+    },
+    rotulo: function (r) {
+      const conselho = (TISS.COUNCILS.find(function (c) { return c.value === r.councilCode }) || {}).label || ''
+      return r.professionalName + ' — ' + conselho + ' ' + r.councilNumber
+    }
+  }
+
   function emptySadt() {
     return {
       mainGuideNumber: '', authorizationDate: '', password: '', passwordValidity: '',
@@ -672,6 +697,9 @@
         '<div class="form-section">Solicitante</div>' +
         '<label class="check"><input type="checkbox" id="r-same"' + (r.sameAsExecutor ? ' checked' : '') + '>Eu mesmo solicitei (usar os dados do Prestador)</label>' +
         '<div class="grid" id="r-fields"' + (r.sameAsExecutor ? ' hidden' : '') + ' style="margin-top:10px">' +
+        '<div class="c12 solicitante-busca"><label class="field">Buscar solicitante já usado neste computador<input id="r-busca" list="r-lista" autocomplete="off" placeholder="Digite o nome ou o nº do conselho…"></label>' +
+        '<datalist id="r-lista">' + Solicitantes.lista().map(function (x) { return '<option value="' + esc(Solicitantes.rotulo(x)) + '">' }).join('') + '</datalist>' +
+        '<span class="hint">O solicitante não precisa de cadastro: preencha abaixo. Ele fica guardado só neste navegador para as próximas guias.</span></div>' +
         '<label class="field c3">Identificação<select id="r-idtype">' + options([{ value: 'codigo', label: 'Código no convênio' }, { value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }], r.contractorIdType) + '</select></label>' +
         '<label class="field c3">Código / CPF / CNPJ <span class="req">*</span><input class="code" id="r-id" value="' + esc(r.contractorId) + '"></label>' +
         '<label class="field c6">Nome do contratado solicitante <span class="req">*</span><input id="r-cname" maxlength="70" value="' + esc(r.contractorName) + '"></label>' +
@@ -1054,6 +1082,24 @@
 
     if (isSadt) {
       $('#r-same').addEventListener('change', function (e) { $('#r-fields').hidden = e.target.checked })
+      // Médico de fora costuma ser ele mesmo o "contratado solicitante": copia o nome se estiver vazio.
+      $('#r-pname').addEventListener('change', function (e) {
+        if (!$('#r-cname').value.trim()) $('#r-cname').value = e.target.value.trim()
+      })
+      $('#r-busca').addEventListener('input', function (e) {
+        const escolhido = Solicitantes.lista().find(function (x) { return Solicitantes.rotulo(x) === e.target.value })
+        if (!escolhido) return
+        $('#r-idtype').value = escolhido.contractorIdType || 'codigo'
+        $('#r-id').value = escolhido.contractorId || ''
+        $('#r-cname').value = escolhido.contractorName || ''
+        $('#r-pname').value = escolhido.professionalName || ''
+        $('#r-council').value = escolhido.councilCode || '06'
+        $('#r-cnumber').value = escolhido.councilNumber || ''
+        $('#r-uf').value = escolhido.councilUf || $('#r-uf').value
+        $('#r-cbos').value = escolhido.cbos || ''
+        e.target.value = ''
+        toast('Dados de ' + escolhido.professionalName + ' preenchidos.')
+      })
       $('#s-servicetype').addEventListener('change', function (e) { $('#consult-type-wrap').hidden = e.target.value !== '04' })
     }
     if (isSadt || isHon) {
@@ -1282,6 +1328,7 @@
         }
         if (isHon) Repo.checkHonorExpenses(id)
         const saved = Repo.saveGuide(id, input)
+        if (isSadt && input.sadt && input.sadt.requester && !input.sadt.requester.sameAsExecutor) Solicitantes.lembrar(input.sadt.requester)
         const linkedSaved = isHon ? Repo.syncHonorExpenses(saved) : null
         lastDoctorId = saved.doctorId
         toast('Guia ' + saved.providerGuideNumber + ' salva.' +
