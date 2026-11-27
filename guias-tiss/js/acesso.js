@@ -47,6 +47,66 @@
     }
   }
 
+  // Quantos médicos e convênios a conta tem (ordem de cadastro) e qual limite vale.
+  function contagem() {
+    if (typeof Db === 'undefined' || !Db.state) return null
+    const porId = function (a, b) { return a.id - b.id }
+    const medicos = Db.state.doctors.slice().sort(porId)
+    const convenios = Db.state.operators.slice().sort(porId)
+    const todosNoMesmoCnpj = medicos.length > 0 && Db.state.contractors.some(function (c) {
+      return c.type === 'cnpj' && medicos.every(function (d) { return c.doctorIds.indexOf(d.id) >= 0 })
+    })
+    return { medicos: medicos, convenios: convenios, todosNoMesmoCnpj: todosNoMesmoCnpj }
+  }
+
+  // Situação da conta em relação ao plano pago (null no teste grátis ou sem dados).
+  function situacaoLimites() {
+    const l = window.Assinatura.limites()
+    const c = contagem()
+    if (!l || !c) return null
+    const limMed = l.medicos === null ? null : (l.medicosCnpj && c.todosNoMesmoCnpj ? Math.max(l.medicos, l.medicosCnpj) : l.medicos)
+    const limConv = l.convenios
+    return {
+      limiteMedicos: limMed,
+      limiteConvenios: limConv,
+      medicos: c.medicos.length,
+      convenios: c.convenios.length,
+      medicosLiberados: limMed === null ? null : c.medicos.slice(0, limMed).map(function (d) { return d.id }),
+      conveniosLiberados: limConv === null ? null : c.convenios.slice(0, limConv).map(function (o) { return o.id }),
+      excedeu: (limMed !== null && c.medicos.length > limMed) || (limConv !== null && c.convenios.length > limConv)
+    }
+  }
+
+  // Plano mais barato que cobre o que já está cadastrado.
+  function planoQueCobre() {
+    const c = contagem()
+    if (!c) return null
+    return Planos.lista.find(function (p) {
+      const limMed = p.medicosCnpj && c.todosNoMesmoCnpj ? Math.max(p.medicos, p.medicosCnpj) : p.medicos
+      return (p.medicos == null || c.medicos.length <= limMed) && (p.convenios == null || c.convenios.length <= p.convenios)
+    }) || null
+  }
+
+  function textoExcesso(s) {
+    const qtd = function (n, um, varios) { return n === null ? varios + ' sem limite' : n + ' ' + (n === 1 ? um : varios) }
+    return 'Seu plano permite ' + qtd(s.limiteMedicos, 'médico', 'médicos') + ' e ' + qtd(s.limiteConvenios, 'convênio', 'convênios') +
+      ', e você tem ' + qtd(s.medicos, 'médico', 'médicos') + ' e ' + qtd(s.convenios, 'convênio', 'convênios') +
+      ' cadastrados. Escolha um plano maior ou remova os excedentes.'
+  }
+
+  window.Assinatura.situacaoLimites = situacaoLimites
+  // Chamado ao salvar uma guia: médicos/convênios além do limite do plano ficam bloqueados.
+  window.Assinatura.checarGuia = function (doctorId, operatorId) {
+    const s = situacaoLimites()
+    if (!s || !s.excedeu) return
+    if (s.medicosLiberados && s.medicosLiberados.indexOf(doctorId) < 0) {
+      throw new Error('Este médico passou do limite do plano. ' + textoExcesso(s))
+    }
+    if (s.conveniosLiberados && s.conveniosLiberados.indexOf(operatorId) < 0) {
+      throw new Error('Este convênio passou do limite do plano. ' + textoExcesso(s))
+    }
+  }
+
   function quemPermite(l) {
     return l.plano && !l.personalizado ? 'O plano ' + l.plano.nome : 'A sua assinatura'
   }
@@ -102,9 +162,16 @@
   }
 
   function planosHtml() {
+    const cobre = planoQueCobre()
+    const c = contagem()
+    const aviso = cobre && c && (c.medicos.length > 1 || c.convenios.length > 1)
+      ? '<p class="assinatura-nota">Você tem ' + c.medicos.length + (c.medicos.length === 1 ? ' médico' : ' médicos') + ' e ' + c.convenios.length +
+        (c.convenios.length === 1 ? ' convênio' : ' convênios') + ' cadastrados: o plano <strong>' + esc(cobre.nome) + '</strong> cobre tudo.</p>'
+      : (c && !cobre ? '<p class="assinatura-nota">Você tem ' + c.medicos.length + ' médicos e ' + c.convenios.length + ' convênios cadastrados, mais do que o maior plano. Fale com a Remasol para um plano sob medida.</p>' : '')
     if (pagamentoAutomatico()) {
-      return '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
-        return '<div class="assinatura-plano">' +
+      return aviso + '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
+        return '<div class="assinatura-plano' + (cobre && cobre.id === p.id ? ' recomendado' : '') + '">' +
+          (cobre && cobre.id === p.id ? '<em class="assinatura-selo">Cobre o seu cadastro</em>' : '') +
           '<strong>' + esc(p.nome) + '</strong><span>' + Planos.money(p.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(p)) + '</small>' +
           '<button type="button" class="btn solid btn-pagar" data-pagar="' + esc(p.id) + '" data-forma="mensal">Pagar 30 dias</button>' +
           '<button type="button" class="btn btn-pagar" data-pagar="' + esc(p.id) + '" data-forma="assinatura">Assinar no cartão</button>' +
@@ -115,8 +182,8 @@
         'Use no Mercado Pago o mesmo e-mail da sua conta do Guias TISS.</p>' +
         '<p class="assinatura-erro" data-pagar-erro hidden></p>'
     }
-    return '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
-      return '<a class="assinatura-plano" target="_blank" rel="noopener" href="' +
+    return aviso + '<div class="assinatura-planos">' + Planos.lista.map(function (p) {
+      return '<a class="assinatura-plano' + (cobre && cobre.id === p.id ? ' recomendado' : '') + '" target="_blank" rel="noopener" href="' +
         esc(p.link || linkWhats('Olá! Quero assinar o Guias TISS no plano ' + p.nome + '.')) + '">' +
         '<strong>' + esc(p.nome) + '</strong><span>' + Planos.money(p.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(p)) + '</small></a>'
     }).join('') + '</div>'
@@ -200,6 +267,7 @@
     }
     else etiqueta = dias === 0 ? 'Teste encerrado' : dias === 1 ? 'Teste: último dia' : 'Teste: ' + dias + ' dias restantes'
 
+    const excesso = (function () { const x = situacaoLimites(); return x && x.excedeu ? x : null })()
     const faixa = document.createElement('div')
     faixa.className = 'conta-faixa'
     faixa.innerHTML =
@@ -207,7 +275,8 @@
       '<span class="conta-teste' + (cliente && cliente.status === 'ativo' ? ' ativo' : '') + '">' + esc(etiqueta) + '</span><br>' +
       (cliente && (plano || Planos.faturistaAtivo(cliente)) ? '<button type="button" data-ver>Minha assinatura</button> · ' : '') +
       (!(cliente && cliente.status === 'ativo') || (pagamentoAutomatico() && pagoAte() && cliente.formaPagamento !== 'assinatura') ? '<button type="button" data-planos>' + (cliente && cliente.status === 'ativo' ? 'Renovar' : 'Ver planos') + '</button> · ' : '') +
-      '<button type="button" data-sair>Sair</button>'
+      '<button type="button" data-sair>Sair</button>' +
+      (excesso ? '<p class="conta-excesso">' + esc(textoExcesso(excesso)) + ' <button type="button" data-planos-excesso>Ver planos</button></p>' : '')
     faixa.querySelector('[data-sair]').addEventListener('click', function () { auth.signOut().then(irParaLogin) })
     const ver = faixa.querySelector('[data-ver]')
     if (ver) {
@@ -221,16 +290,14 @@
           '<button type="button" class="btn" data-fechar>Fechar</button>')
       })
     }
-    const verPlanos = faixa.querySelector('[data-planos]')
-    if (verPlanos) {
-      verPlanos.addEventListener('click', function () {
-        janela('<h2>Planos do Guias TISS</h2>' +
-          '<p>Escolha o plano para continuar depois do período grátis. Seus dados continuam guardados.</p>' +
-          planosHtml() +
-          '<p>Dúvidas ou serviço Faturista: <a href="' + esc(linkWhats('Olá! Tenho uma dúvida sobre os planos do Guias TISS.')) + '" target="_blank" rel="noopener">WhatsApp (21) 97666-3134</a>.</p>' +
-          '<button type="button" class="btn" data-fechar>Fechar</button>')
-      })
+    const abrirPlanos = function () {
+      janela('<h2>Planos do Guias TISS</h2>' +
+        '<p>' + (cliente && cliente.status === 'ativo' ? 'Escolha o plano que cobre o seu cadastro.' : 'Escolha o plano para continuar depois do período grátis. Seus dados continuam guardados.') + '</p>' +
+        planosHtml() +
+        '<p>Dúvidas: <a href="' + esc(linkWhats('Olá! Tenho uma dúvida sobre os planos do Guias TISS.')) + '" target="_blank" rel="noopener">WhatsApp (21) 97666-3134</a>.</p>' +
+        '<button type="button" class="btn" data-fechar>Fechar</button>')
     }
+    faixa.querySelectorAll('[data-planos], [data-planos-excesso]').forEach(function (b) { b.addEventListener('click', abrirPlanos) })
     sidebar.insertBefore(faixa, sidebar.querySelector('.sidebar-note'))
   }
 
