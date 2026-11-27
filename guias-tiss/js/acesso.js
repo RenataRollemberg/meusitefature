@@ -146,9 +146,9 @@
   }
 
   function resumoHtml(c) {
-    const plano = Planos.get(c.plano)
+    const plano = Planos.doCliente(c)
     return (plano
-      ? '<div class="assinatura-item"><span>Plano</span><strong>' + esc(plano.nome) + '</strong><small>' + esc(Planos.limitesTexto(plano)) + '</small></div>'
+      ? '<div class="assinatura-item"><span>Plano</span><strong>' + esc(plano.id === 'personalizado' ? 'Personalizado' : plano.nome) + '</strong><small>' + esc(Planos.limitesTexto(plano)) + '</small></div>'
       : '') +
       (Planos.faturistaAtivo(c)
         ? '<div class="assinatura-item"><span>Serviço extra</span><strong>' + esc(Planos.FATURISTA.nome) + '</strong><small>' + esc(Planos.FATURISTA.descricao) +
@@ -162,6 +162,19 @@
   }
 
   function planosHtml() {
+    const pers = Planos.personalizado(cliente)
+    if (pers) {
+      const html = '<div class="assinatura-planos"><div class="assinatura-plano recomendado">' +
+        '<em class="assinatura-selo">Seu plano</em><strong>Plano personalizado</strong><span>' + Planos.money(pers.mensal) + '/mês</span><small>' + esc(Planos.limitesTexto(pers)) + '</small>' +
+        (pagamentoAutomatico()
+          ? '<button type="button" class="btn solid btn-pagar" data-pagar="personalizado" data-forma="mensal">Pagar 30 dias</button>' +
+            '<button type="button" class="btn btn-pagar" data-pagar="personalizado" data-forma="assinatura">Assinar no cartão</button>'
+          : '') +
+        '</div></div>'
+      return html + (pagamentoAutomatico()
+        ? '<p class="assinatura-nota"><strong>Pagar 30 dias:</strong> Pix, boleto ou cartão; cada pagamento libera mais 30 dias. <strong>Assinar no cartão:</strong> cobrança automática todo mês.</p><p class="assinatura-erro" data-pagar-erro hidden></p>'
+        : '')
+    }
     const cobre = planoQueCobre()
     const c = contagem()
     const aviso = cobre && c && (c.medicos.length > 1 || c.convenios.length > 1)
@@ -259,10 +272,10 @@
   function faixaConta(auth, user, dias) {
     const sidebar = document.querySelector('.sidebar')
     if (!sidebar) return
-    const plano = cliente && Planos.get(cliente.plano)
+    const plano = cliente && Planos.doCliente(cliente)
     let etiqueta
     if (cliente && cliente.status === 'ativo') {
-      etiqueta = plano ? plano.nome : 'Assinatura ativa'
+      etiqueta = plano ? (plano.id === 'personalizado' ? 'Plano personalizado' : plano.nome) : 'Assinatura ativa'
       if (pagoAte()) etiqueta += vencido() ? ' · venceu' : ' · até ' + dataCurta(pagoAte())
     }
     else etiqueta = dias === 0 ? 'Teste encerrado' : dias === 1 ? 'Teste: último dia' : 'Teste: ' + dias + ' dias restantes'
