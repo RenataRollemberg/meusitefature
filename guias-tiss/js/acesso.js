@@ -16,9 +16,11 @@
   raiz.classList.add('acesso-carregando')
 
   let cliente = null
+  let emailUsuario = ''
 
   window.Assinatura = {
     cliente: function () { return cliente },
+    email: function () { return emailUsuario },
     limites: function () {
       // No período grátis (30 dias) não há limite de médicos nem de convênios.
       if (!cliente || (cliente.status || 'teste') === 'teste') return null
@@ -497,6 +499,7 @@
   obterAuth().then(function (auth) {
     auth.onAuthStateChanged(function (user) {
       if (!user || !user.emailVerified) return irParaLogin()
+      emailUsuario = String(user.email || '').trim().toLowerCase()
       carregarCliente(user).then(function (r) {
         cliente = r.dados
         const primeiraVez = cliente && cliente.origem !== 'site' && !cliente.aceitoEm

@@ -523,10 +523,18 @@
         '<span>sessões, a cada</span>' +
         '<input inputmode="numeric" data-repeat-days="' + i + '" value="7" aria-label="Intervalo em dias">' +
         '<span>dias</span>' +
-        '<label class="check" style="margin:0"><input type="checkbox" data-repeat-sunday="' + i + '" checked>Pular domingos</label>' +
+        '<label class="check" style="margin:0"><input type="checkbox" data-repeat-sunday="' + i + '" checked>' + (pulaFeriadosRJ() ? 'Pular domingos e feriados (RJ)' : 'Pular domingos') + '</label>' +
         '<button type="button" class="btn small" data-repeat-item="' + i + '">Gerar sessões</button>' +
-        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item. Com "Pular domingos" marcado, o domingo passa para segunda e a contagem continua dali (ex.: diário = segunda a sábado).</span></div>') +
+        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item. ' + (pulaFeriadosRJ() ? 'Com "Pular domingos e feriados" marcado, domingos e feriados (nacionais, do estado e do município do Rio) passam para o próximo dia útil e a contagem continua dali.' : 'Com "Pular domingos" marcado, o domingo passa para segunda e a contagem continua dali (ex.: diário = segunda a sábado).') + '</span></div>') +
       '</div></div>'
+  }
+
+  // Só para os logins em FERIADOS_RJ_EMAILS (firebase-config.js): também pula feriados do RJ.
+  function pulaFeriadosRJ() {
+    try {
+      return !!(window.Feriados && window.Assinatura && window.Assinatura.email && typeof FERIADOS_RJ_EMAILS !== 'undefined' &&
+        FERIADOS_RJ_EMAILS.indexOf(window.Assinatura.email()) !== -1)
+    } catch (e) { return false }
   }
 
   // Data de "aaaa-mm-dd" somando dias (sem problema de fuso horário).
@@ -1179,7 +1187,14 @@
           if (!base.code) return toast('Escolha o procedimento antes de gerar as sessões.', true)
           // Nunca no domingo: passa para segunda e a contagem segue a partir da nova data.
           const pular = $('[data-repeat-sunday="' + idx + '"]').checked
-          const semDomingo = function (iso) { return pular && new Date(iso + 'T12:00:00Z').getUTCDay() === 0 ? somarDias(iso, 1) : iso }
+          const feriados = pulaFeriadosRJ()
+          const bloqueado = function (iso) { return new Date(iso + 'T12:00:00Z').getUTCDay() === 0 || (feriados && !!window.Feriados.rj(iso)) }
+          const semDomingo = function (iso) {
+            if (!pular) return iso
+            let d = iso
+            for (let n = 0; n < 10 && bloqueado(d); n++) d = somarDias(d, 1)
+            return d
+          }
           base.date = semDomingo(inicio)
           const novas = []
           let data = base.date
