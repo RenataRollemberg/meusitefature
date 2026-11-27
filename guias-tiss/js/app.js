@@ -523,8 +523,9 @@
         '<span>sessões, a cada</span>' +
         '<input inputmode="numeric" data-repeat-days="' + i + '" value="7" aria-label="Intervalo em dias">' +
         '<span>dias</span>' +
+        '<label class="check" style="margin:0"><input type="checkbox" data-repeat-sunday="' + i + '" checked>Pular domingos</label>' +
         '<button type="button" class="btn small" data-repeat-item="' + i + '">Gerar sessões</button>' +
-        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item. Domingo passa para segunda e a contagem continua dali.</span></div>') +
+        '<span class="hint">Cria os itens seguidos na guia, cada um com a sua data, a partir da data de execução deste item. Com "Pular domingos" marcado, o domingo passa para segunda e a contagem continua dali (ex.: diário = segunda a sábado).</span></div>') +
       '</div></div>'
   }
 
@@ -1177,7 +1178,8 @@
           if (!inicio) return toast('Informe a data de execução deste item (ou a data do atendimento).', true)
           if (!base.code) return toast('Escolha o procedimento antes de gerar as sessões.', true)
           // Nunca no domingo: passa para segunda e a contagem segue a partir da nova data.
-          const semDomingo = function (iso) { return new Date(iso + 'T12:00:00Z').getUTCDay() === 0 ? somarDias(iso, 1) : iso }
+          const pular = $('[data-repeat-sunday="' + idx + '"]').checked
+          const semDomingo = function (iso) { return pular && new Date(iso + 'T12:00:00Z').getUTCDay() === 0 ? somarDias(iso, 1) : iso }
           base.date = semDomingo(inicio)
           const novas = []
           let data = base.date
